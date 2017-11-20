@@ -152,7 +152,7 @@ class IrcCodenamesGame(object):
         with open(self.word_deck_fn) as fp:
             self.word_deck = json.load(fp)
         self.board = None
-        self.starting_team = random.choice(Team)
+        self.starting_team = random.choice(list(Team))
         self.moving_team = None
         self.winning_team = None
         self.phase = GamePhase.setup
@@ -182,7 +182,7 @@ class IrcCodenamesGame(object):
         self.phase = GamePhase.in_progress
     
     def restart(self):
-        self.moving_team = random.choice(Team)
+        self.moving_team = random.choice(list(Team))
         self.start()
     
     def initialize_board(self):
@@ -235,7 +235,6 @@ class IrcCodenamesGame(object):
             self.phase = GamePhase.finished
             return GameEvent.end_game
         elif revealed_card_type is CardType.bystander:
-            self.next_turn()
             return GameEvent.end_turn
         else:
             revealed_card_team = revealed_card_type.team()
@@ -244,7 +243,6 @@ class IrcCodenamesGame(object):
                 self.phase = GamePhase.finished
                 return GameEvent.end_game
             elif revealed_card_team is not self.moving_team:
-                self.next_turn()
                 return GameEvent.end_turn
         return GameEvent.continue_turn
     
