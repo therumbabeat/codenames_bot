@@ -3,7 +3,7 @@ from sopel.module import (
 
 
 from codenames import (
-    IrcCodenamesGame, Team, GamePhase, IrcGameError)
+    Team, GamePhase, IrcCodenamesGame, IrcGameError)
 
 
 BOT_MEMORY_KEY = 'codenames_game'
@@ -19,11 +19,11 @@ def new_game(bot):
 
 def check_phase_setup(bot, trigger):
     game = get_game(bot)
-    setup_phase = game.phase == GamePhase.setup
+    setup_phase = (game.phase is GamePhase.setup)
     if not setup_phase:
         response = '{player}: Can only do that while setting up the ' \
                    'game.'.format(player=trigger.nick)
-        bot.say(response)
+        bot.say(response, trigger.sender)
     return setup_phase
 
 
@@ -89,3 +89,26 @@ def start_game(bot, trigger):
     bot.say('It is now the {team_color} team\'s turn!'.format(
         team_color=game.moving_team.value))
 
+
+@require_chanmsg
+@commands('setup')
+def setup_game(bot, trigger):
+    new_game(bot)
+    bot.say('Setting up Codenames, please .join (red|blue) to join a team '
+            'and .spymaster to become your team\'s spymaster, and .start to '
+            'start the game once teams are decided.', trigger.sender)
+
+
+@require_chanmsg
+@commands('team')
+def get_team_members(bot, trigger):
+    team_color = trigger.group(2).strip()
+    try:
+        team = Team(team_color)
+    except ValueError:
+        return
+    game = get_game(bot)
+    team_members = game.get_team_members(team)
+    response = 'Members of the {color} team: {members}'.format(
+        color=team.color, members=','.join(team_members))
+    bot.say(response, trigger.sender)

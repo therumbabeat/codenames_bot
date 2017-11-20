@@ -42,7 +42,11 @@ class Team(enum.Enum):
 
     def card_type(self):
         """Card type for this team"""
-        return CardType(self.value)
+        return CardType(self.color)
+
+    @property
+    def color(self):
+        return self.value
 
 
 class GameEvent(enum.Enum):
@@ -151,7 +155,7 @@ class IrcCodenamesGame(object):
         with open(self.word_deck_fn) as fp:
             self.word_deck = json.load(fp)
         self.board = None
-        self.starting_team = random.choice(Team)
+        self.starting_team = random.choice(list(Team))
         self.moving_team = None
         self.winning_team = None
         self.phase = GamePhase.setup
@@ -173,10 +177,10 @@ class IrcCodenamesGame(object):
         for team in Team:
             if len(self.teams[team]) < 2:
                 raise IrcGameError('{color} team must have at least 2 players.'
-                                   .format(color=team.value.capitalize()))
+                                   .format(color=team.color.capitalize()))
             if self.spymasters[team] is None:
                 raise IrcGameError('{color} team must have a spymaster.'
-                                   .format(color=team.value.capitalize()))
+                                   .format(color=team.color.capitalize()))
         self.initialize_board()
         self.phase = GamePhase.in_progress
 
@@ -212,7 +216,8 @@ class IrcCodenamesGame(object):
     def set_spymaster(self, team: Team, player: str):
         if player not in self.teams[team]:
             raise ValueError('Player must be in {color} team in order to '
-                             'become its spymaster.'.format(color=team.value))
+                             'become its spymaster.'
+                             .format(color=team.color))
         self.spymasters[team] = player
 
     def get_player_team(self, player: str) -> Union[Team, None]:
@@ -220,6 +225,9 @@ class IrcCodenamesGame(object):
             if player in self.teams[team]:
                 return team
         return None
+
+    def get_team_members(self, team: Team) -> List[str]:
+        return self.teams[team]
 
     def team_won(self, team: Team) -> bool:
         return self.board.team_won(team)
@@ -262,7 +270,7 @@ class IrcCodenamesGame(object):
         if self.phase is GamePhase.finished:
             raise InvalidMove(
                 'Game has already concluded, and {team_color} team was '
-                'victorious!'.format(team_color=self.winning_team.value))
+                'victorious!'.format(team_color=self.winning_team.color))
 
     def render_board(self, column_width: int = None, include_colors: bool =
                      False) -> str:
@@ -289,7 +297,7 @@ class IrcCodenamesGame(object):
 
         def render_row(row: List[str], width: int,
                        card_types: List[CardType] = None):
-            template = '{0}{1}{2}{3}{4}'
+            template = '{}{}{}{}{}'
             if card_types is None:
                 words = [pad_word(word, width) for word in row]
             else:
@@ -302,7 +310,7 @@ class IrcCodenamesGame(object):
                     words.append(colored_word)
             return template.format(*[pad_word(word, width) for word in words])
 
-        board_template = '{0}\n{1}\n{2}\n{3}\n{4}'
+        board_template = '{}\n{}\n{}\n{}\n{}'
         rendered_rows = []
         for i in range(BOARD_SIZE):
             card_types = self.board.spy_key[i] if include_colors else None
