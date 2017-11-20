@@ -286,7 +286,7 @@ class IrcCodenamesGame(object):
                 CardType.red: irc_format.colors.RED,
                 CardType.blue: irc_format.colors.LIGHT_BLUE,
                 CardType.bystander: irc_format.colors.LIGHT_GRAY,
-                CardType.assassin: irc_format.colors.BLACK
+                CardType.assassin: irc_format.colors.WHITE
             }
             return type_color[card_type]
         
@@ -295,12 +295,13 @@ class IrcCodenamesGame(object):
             words = []
             for index, word in enumerate(row):
                 card_type = card_types[index]
-                color = card_type_color(card_type)
+                color1 = card_type_color(card_type)
+                color2 = irc_format.colors.BLACK if card_type == CardType.assassin else irc_format.colors.WHITE
                 padded_word = pad_word(word, width)
                 if word == REVEALED_CARD_TOKEN:
-                    colored_word = irc_format.bold(irc_format.color(padded_word, color))
+                    colored_word = irc_format.bold(irc_format.color(padded_word, color1, color2))
                 elif include_colors:
-                    colored_word = irc_format.color(padded_word, color)
+                    colored_word = irc_format.color(padded_word, color1, color2)
                 else:
                     colored_word = padded_word
                 words.append(colored_word)
