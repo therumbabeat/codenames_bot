@@ -1,7 +1,7 @@
 from sopel.module import (
     commands, require_privmsg, require_chanmsg)
 
-from codenames import (
+from .codenames import (
     IrcCodenamesGame, Team, GamePhase, IrcGameError, REVEALED_CARD_TOKEN, GameEvent)
 
 BOT_MEMORY_KEY = 'codenames_game'
@@ -21,40 +21,94 @@ def check_phase_setup(bot, trigger):
     setup_phase = game.phase == GamePhase.setup
     if not setup_phase:
         response = '{player}: Can only do that while setting up the ' \
-                   'game.'.format(player=trigger.nick)
-        bot.say(response)
+                   'game.'.format(player=str(trigger.nick))
+        bot.say(response, trigger.sender)
     return setup_phase
 
 
 @commands('print')
 def print_board(bot, trigger):
-    if not check_phase_setup(bot, None):
+    """Prints the game board"""
+    if BOT_MEMORY_KEY not in bot.memory:
         return
     game = get_game(bot)
     bot.say(game.render_board(column_width=COLUMN_WIDTH, include_colors=True),  # maybe not always true? TODO
             trigger.sender)
-    
-    
-@commands('help')
-def print_tutorial(bot, trigger):
-    if not check_phase_setup(bot, None):
+
+
+@commands('teams')
+def print_teams(bot, trigger):
+    """Prints the team members"""
+    if BOT_MEMORY_KEY not in bot.memory:
         return
     game = get_game(bot)
+    bot.say("Team {team}:".format(team=Team.red), trigger.sender)
+    bot.say(game.teams[Team.red], trigger.sender)
+    bot.say("With {spy} as spymaster.".format(spy=game.spymasters[Team.red]), trigger.sender)
+    bot.say("~~~ VS ~~~", trigger.sender)
+    bot.say("Team {team}:".format(team=Team.blue), trigger.sender)
+    bot.say(game.teams[Team.blue], trigger.sender)
+    bot.say("With {spy} as spymaster.".format(spy=game.spymasters[Team.blue]), trigger.sender)
+
+
+@commands('codenames')
+def print_tutorial(bot, trigger):
+    """Prints all the commands for the codenames game."""
+    bot.say('COMMANDS:')
+    bot.say('* codenames')
+    bot.say('* setup')
+    bot.say('* join <team?>')
+    bot.say('* leave')
+    bot.say('* start')
+    bot.say('* spymaster')
+    bot.say('* choose <word>')
+    bot.say('* pass')
+    bot.say('* print')
+    bot.say('* teams')
+
+
+@require_chanmsg
+@commands('setup')
+def setup_game(bot, trigger):
+    """Sets up a game of Codenames. Waits for players and spymasters to join."""
+    if BOT_MEMORY_KEY in bot.memory:
+        pass  # but need to end last game and restart maybe
     
-    bot.say('commands are: help join leave start spymaster choose(+word) pass print', trigger.sender)
+    new_game(bot)
+    bot.say('Setting up Codenames, please !join (optional red|blue) to join a team '
+            'and !become_spymaster to become your team\'s spymaster. Say !start to '
+            'start the game once teams are decided.', trigger.sender)
+
+
+@require_chanmsg
+@commands('fuck_off')
+def suicide(bot, trigger):
+    """This kills the bot"""
+    bot.say('PEACE OUT!')
+    bot.write(('QUIT', 'Goodbye cruel world...'))
+    import os
+    os._exit(1) # O_O
 
 
 @require_chanmsg
 @commands('join')
 def add_player(bot, trigger):
+    """Adds a player to the game, to the specified team. Leave empty to get assigned automatically."""
     if not check_phase_setup(bot, trigger):
         return
-    team_color = trigger.group(2).strip()
+    game = get_game(bot)
+    if trigger.group(2) is None:
+        if len(game.teams[Team.red]) > len(game.teams[Team.blue]):
+            team_color = Team.blue
+        else:
+            team_color = Team.red
+    else:
+        team_color = trigger.group(2).strip()
     try:
         team = Team(team_color)
     except ValueError:
+        bot.say('You call {this} a team??'.format(this=team_color), trigger.sender)
         return
-    game = get_game(bot)
     game.add_player(trigger.nick, team)
     response = 'Added {player} to {team_color} team.'.format(
         player=trigger.nick, team_color=team.value)
@@ -64,6 +118,7 @@ def add_player(bot, trigger):
 @require_chanmsg
 @commands('leave')
 def remove_player(bot, trigger):
+    """Removes a player from the game."""
     if not check_phase_setup(bot, trigger):
         return
     game = get_game(bot)
@@ -77,6 +132,7 @@ def remove_player(bot, trigger):
 @require_chanmsg
 @commands('spymaster')
 def set_spymaster(bot, trigger):
+    """Sets a player as a spymaster for their team."""
     if not check_phase_setup(bot, trigger):
         return
     game = get_game(bot)
@@ -87,13 +143,14 @@ def set_spymaster(bot, trigger):
     else:
         game.set_spymaster(team, trigger.nick)
         response = '{player} is now the {team} spymaster.'.format(
-            player=trigger.nick, team=Team.value)
+            player=trigger.nick, team=team.value)
     bot.say(response, trigger.sender)
 
 
 @require_chanmsg
 @commands('start')
 def start_game(bot, trigger):
+    """Starts a game of Codenames, after setup is done."""
     if not check_phase_setup(bot, trigger):
         return
     game = get_game(bot)
@@ -110,8 +167,9 @@ def start_game(bot, trigger):
 
 
 @require_chanmsg
-@commands('choose')
+@commands('touch')
 def player_choose(bot, trigger):
+    """Choose a card and touch it. Hope you made the right choice!"""
     if not check_phase_setup(bot, trigger):
         return
     game = get_game(bot)
@@ -154,6 +212,7 @@ def player_choose(bot, trigger):
 @require_chanmsg
 @commands('pass')
 def team_pass(bot, trigger):
+    """Finish your team's turn."""
     if not check_phase_setup(bot, trigger):
         return
     game = get_game(bot)

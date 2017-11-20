@@ -9,6 +9,7 @@ import math
 import json
 from typing import List, Tuple, Union, Iterable
 
+import os
 import sopel.formatting as irc_format
 
 MINIMUM_PLAYERS = 4
@@ -149,7 +150,7 @@ class IrcCodenamesGame(object):
         self.spymasters = dict()
         self.spymasters[Team.red] = red_spymaster
         self.spymasters[Team.blue] = blue_spymaster
-        with open(self.word_deck_fn) as fp:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), self.word_deck_fn)) as fp:
             self.word_deck = json.load(fp)
         self.board = None
         self.starting_team = random.choice(list(Team))
@@ -193,9 +194,11 @@ class IrcCodenamesGame(object):
     def add_player(self, player: str, team: Team):
         """Add a player. Gracefully handle situation when player is already
         added, even if they're on the opposite team."""
+        if player in self.teams[team]:
+            return
         if player in self.teams[team.other()]:
             self.teams[team.other()].remove(player)
-            if self.spymasters[team.other()] == player:
+            if player == self.spymasters[team.other()]:
                 self.spymasters[team.other()] = None
         self.teams[team].add(player)
     
