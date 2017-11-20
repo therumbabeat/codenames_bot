@@ -74,10 +74,9 @@ class GameBoard(object):
     
     @staticmethod
     def generate_grid(word_deck: List[str]) -> List[List[str]]:
-        board_words = random.sample(word_deck, BOARD_SIZE * BOARD_SIZE)
-        board = [board_words[i:i + BOARD_SIZE]
-                 for i in range(0, BOARD_SIZE * BOARD_SIZE, BOARD_SIZE)]
-        return board
+        board_words = list(map(str.upper, random.sample(word_deck, BOARD_SIZE * BOARD_SIZE)))
+        grid = [board_words[i:i + BOARD_SIZE] for i in range(0, BOARD_SIZE * BOARD_SIZE, BOARD_SIZE)]
+        return grid
     
     @staticmethod
     def validate_deck(word_deck: List[str]):
@@ -124,6 +123,7 @@ class GameBoard(object):
         if word == REVEALED_CARD_TOKEN:
             raise ValueError('Searching for the revealed token is not '
                              'supported.')
+        word = word.upper()
         for i, j in self.get_grid_indices():
             if self.grid[i][j] == word:
                 return i, j
@@ -154,7 +154,7 @@ class IrcCodenamesGame(object):
             self.word_deck = json.load(fp)
         self.board = None
         self.starting_team = random.choice(list(Team))
-        self.moving_team = None
+        self.moving_team = self.starting_team
         self.winning_team = None
         self.phase = GamePhase.setup
     
@@ -172,18 +172,20 @@ class IrcCodenamesGame(object):
     
     def start(self):
         """Start the game. Throw an exception if something is wrong."""
-        for team in Team:
-            if len(self.teams[team]) < 2:
-                raise IrcGameError('{color} team must have at least 2 players.'
-                                   .format(color=team.value.capitalize()))
-            if self.spymasters[team] is None:
-                raise IrcGameError('{color} team must have a spymaster.'
-                                   .format(color=team.value.capitalize()))
+        if False:  # TODO TEMPORARY WORKAROUND
+            for team in Team:
+                if len(self.teams[team]) < 2:
+                    raise IrcGameError('{color} team must have at least 2 players.'
+                                       .format(color=team.value.capitalize()))
+                if self.spymasters[team] is None:
+                    raise IrcGameError('{color} team must have a spymaster.'
+                                       .format(color=team.value.capitalize()))
         self.initialize_board()
         self.phase = GamePhase.in_progress
     
     def restart(self):
-        self.moving_team = random.choice(list(Team))
+        self.starting_team = random.choice(list(Team))
+        self.moving_team = self.starting_team
         self.start()
     
     def initialize_board(self):
@@ -266,7 +268,7 @@ class IrcCodenamesGame(object):
                 'Game has already concluded, and {team_color} team was '
                 'victorious!'.format(team_color=self.winning_team.value))
     
-    def render_board(self, column_width: int = None, include_colors: bool = False) -> str:
+    def render_board_rows(self, column_width: int = None, include_colors: bool = False) -> List[str]:
         
         column_width = column_width or self.board_column_width
         
@@ -282,38 +284,35 @@ class IrcCodenamesGame(object):
         def card_type_color(card_type: CardType) -> irc_format.colors:
             type_color = {
                 CardType.red: irc_format.colors.RED,
-                CardType.blue: irc_format.colors.BLUE,
-                CardType.bystander: irc_format.colors.GRAY,
+                CardType.blue: irc_format.colors.LIGHT_BLUE,
+                CardType.bystander: irc_format.colors.LIGHT_GRAY,
                 CardType.assassin: irc_format.colors.BLACK
             }
             return type_color[card_type]
         
-        # Next lines are basically generifying these lines:
-        # board_template = '{0}\n{1}\n{2}\n{3}\n{4}'
-        board_template = '\n'.join(['{' + str(num) + '}' for num in range(1, BOARD_SIZE + 1)])
-        line_template = ' '.join(['{' + str(num) + '}' for num in range(1, BOARD_SIZE + 1)])
-        
-        def render_row(row: List[str], width: int,
-                       card_types: List[CardType] = None):
-            if card_types is None:
-                words = [pad_word(word, width) for word in row]
-            else:
-                words = []
-                for index, word in enumerate(row):
-                    card_type = card_types[index]
-                    color = card_type_color(card_type)
-                    padded_word = pad_word(word, width)
+        def render_row(row: List[str], width: int, card_types: List[CardType] = None):
+            template = '{}' * BOARD_SIZE
+            words = []
+            for index, word in enumerate(row):
+                card_type = card_types[index]
+                color = card_type_color(card_type)
+                padded_word = pad_word(word, width)
+                if word == REVEALED_CARD_TOKEN:
+                    colored_word = irc_format.bold(irc_format.color(padded_word, color))
+                elif include_colors:
                     colored_word = irc_format.color(padded_word, color)
-                    words.append(colored_word)
-            return line_template.format(*[pad_word(word, width) for word in words])
+                else:
+                    colored_word = padded_word
+                words.append(colored_word)
+            return template.format(*[pad_word(word, width) for word in words])
         
         rendered_rows = []
         for i in range(BOARD_SIZE):
-            card_types = self.board.spy_key[i] if include_colors else None
-            rendered_row = render_row(self.board.board[i],
+            card_types = self.board.spy_key[i]
+            rendered_row = render_row(self.board.grid[i],
                                       column_width, card_types)
             rendered_rows.append(rendered_row)
-        return board_template.format(*rendered_rows)
+        return rendered_rows
 
 
 class InvalidMove(Exception):
