@@ -40,7 +40,7 @@ def add_player(bot, trigger):
     game = get_game(bot)
     game.add_player(trigger.nick, team)
     response = 'Added {player} to {team_color} team.'.format(
-        player=trigger.nick, team_color=team.value)
+        player=trigger.nick, team_color=team.color)
     bot.say(response, trigger.sender)
 
 
@@ -53,7 +53,7 @@ def remove_player(bot, trigger):
     team = game.remove_player(trigger.nick)
     if team is not None:
         response = 'Removed {player} from {team_color} team.'.format(
-            player=trigger.nick, team_color=team.value)
+            player=trigger.nick, team_color=team.color)
         bot.say(response, trigger.sender)
 
 
@@ -70,7 +70,7 @@ def set_spymaster(bot, trigger):
     else:
         game.set_spymaster(team, trigger.nick)
         response = '{player} is now the {team} spymaster.'.format(
-            player=trigger.nick, team=Team.value)
+            player=trigger.nick, team=team.color)
     bot.say(response, trigger.sender)
 
 
@@ -87,7 +87,7 @@ def start_game(bot, trigger):
         return
     bot.say('Codenames game now starting!', trigger.sender)
     bot.say('It is now the {team_color} team\'s turn!'.format(
-        team_color=game.moving_team.value))
+        team_color=game.moving_team.color))
 
 
 @require_chanmsg
@@ -112,3 +112,13 @@ def get_team_members(bot, trigger):
     response = 'Members of the {color} team: {members}'.format(
         color=team.color, members=','.join(team_members))
     bot.say(response, trigger.sender)
+
+
+@require_chanmsg
+@commands('board')
+def print_board(bot, trigger):
+    game = get_game(bot)
+    game.initialize_board()
+    rendered_board_rows = game.render_board_rows()
+    for row in rendered_board_rows:
+        bot.say(row, trigger.sender)

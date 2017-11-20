@@ -272,8 +272,8 @@ class IrcCodenamesGame(object):
                 'Game has already concluded, and {team_color} team was '
                 'victorious!'.format(team_color=self.winning_team.color))
 
-    def render_board(self, column_width: int = None, include_colors: bool =
-                     False) -> str:
+    def render_board_rows(self, column_width: int = None, include_colors:
+    bool = False) -> List[str]:
 
         column_width = column_width or self.board_column_width
 
@@ -310,14 +310,13 @@ class IrcCodenamesGame(object):
                     words.append(colored_word)
             return template.format(*[pad_word(word, width) for word in words])
 
-        board_template = '{}\n{}\n{}\n{}\n{}'
         rendered_rows = []
         for i in range(BOARD_SIZE):
             card_types = self.board.spy_key[i] if include_colors else None
-            rendered_row = render_row(self.board.board[i],
+            rendered_row = render_row(self.board.grid[i],
                                       column_width, card_types)
             rendered_rows.append(rendered_row)
-        return board_template.format(*rendered_rows)
+        return rendered_rows
 
 
 class InvalidMove(Exception):
