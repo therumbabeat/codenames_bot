@@ -156,6 +156,7 @@ class IrcCodenamesGame(object):
 
     def __init__(self, red_team: List[str] = None, blue_team: List[str] = None,
                  blue_spymaster: str = None, red_spymaster: str = None):
+        self.complete_original_spoiler_rows = None  # updated in codenames.bot.start_game()
         self.teams = dict()
         self.teams[Team.red] = set(red_team or [])
         self.teams[Team.blue] = set(blue_team or [])
@@ -290,7 +291,7 @@ class IrcCodenamesGame(object):
                 'victorious!'.format(team_color=self.winning_team.color))
 
     def render_board_rows(self, column_width: int = None,
-                          include_colors: bool = False) -> List[str]:
+                          spoil_colors: bool = False) -> List[str]:
 
         column_width = column_width or self.board_column_width
 
@@ -329,7 +330,7 @@ class IrcCodenamesGame(object):
             for index, word in enumerate(row):
                 card_type = card_types[index]
                 padded_word = pad_word(word, width)
-                if word == REVEALED_CARD_TOKEN or include_colors:
+                if word == REVEALED_CARD_TOKEN or spoil_colors:
                     decorated_word = decorate_word(padded_word, card_type)
                 else:
                     decorated_word = padded_word

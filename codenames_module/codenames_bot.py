@@ -61,7 +61,7 @@ def print_board(bot, trigger):
         return
     game = get_game(bot)
     rows = game.render_board_rows(column_width=COLUMN_WIDTH,
-                                  include_colors=False)
+                                  spoil_colors=False)
     for row in rows:
         say(bot, trigger, row)
 
@@ -86,7 +86,7 @@ def print_board_full(bot, trigger):
         say(bot, trigger, "You won't fool me!")
         return
     rows = game.render_board_rows(column_width=COLUMN_WIDTH,
-                                  include_colors=True)
+                                  spoil_colors=True)
     for row in rows:
         say(bot, trigger, row)
 
@@ -234,6 +234,9 @@ def start_game(bot, trigger):
     except IrcGameError as err:
         say(bot, trigger, str(err))
         return
+    
+    game.complete_original_spoiler_rows = game.render_board_rows(column_width=COLUMN_WIDTH, spoil_colors=True)
+    
     say(bot, trigger, 'Codenames game now starting!')
     print_board(bot, trigger)
     team_name = get_decorated_team_name(game.moving_team)
@@ -301,8 +304,7 @@ def player_choose(bot, trigger):
                         )
         say(bot, trigger, response)
 
-        rows = game.render_board_rows(column_width=COLUMN_WIDTH,
-                                      include_colors=True)
+        rows = game.complete_original_spoiler_rows
         for row in rows:
             say(bot, trigger, row)
 
@@ -339,8 +341,22 @@ def team_pass(bot, trigger):
 @require_chanmsg
 @commands('restart')
 def restart_game(bot, trigger):
-    """Restart game with the current teams."""
+    """Restart game with the current teams and a new board."""
     game = get_game(bot)
     game.reset()
     say(bot, trigger, 'Restarting game with the current teams.')
     start_game(bot, trigger)
+
+
+@require_chanmsg
+@commands('finish')
+def finish_game(bot, trigger):
+    """Finish game, and print the full board."""
+    game = get_game(bot)
+    say(bot, trigger, 'You have decided to abruptly conclude the game. The original board was:')
+
+    rows = game.complete_original_spoiler_rows
+    for row in rows:
+        say(bot, trigger, row)
+    
+    game.reset()
