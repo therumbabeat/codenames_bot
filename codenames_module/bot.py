@@ -2,7 +2,8 @@ from sopel.module import (
     commands, require_privmsg, require_chanmsg)
 
 from .codenames import (
-    IrcCodenamesGame, Team, GamePhase, IrcGameError, REVEALED_CARD_TOKEN, GameEvent)
+    IrcCodenamesGame, Team, GamePhase, IrcGameError, REVEALED_CARD_TOKEN,
+    GameEvent)
 
 BOT_MEMORY_KEY = 'codenames_game'
 COLUMN_WIDTH = 12
@@ -17,7 +18,8 @@ def new_game(bot):
 
 
 def check_phase_setup(bot, trigger):
-    if BOT_MEMORY_KEY not in bot.memory or get_game(bot).phase != GamePhase.setup:
+    if BOT_MEMORY_KEY not in bot.memory \
+            or get_game(bot).phase != GamePhase.setup:
         response = '{player}: Can only do that while setting up the ' \
                    'game.'.format(player=str(trigger.nick))
         say(bot, trigger, response)
@@ -26,9 +28,11 @@ def check_phase_setup(bot, trigger):
 
 
 def check_phase_play(bot, trigger):
-    if BOT_MEMORY_KEY not in bot.memory or get_game(bot).phase != GamePhase.in_progress:
+    if BOT_MEMORY_KEY not in bot.memory \
+            or get_game(bot).phase != GamePhase.in_progress:
         response = '{player}: Can only do that while mid-' \
                    'game.'.format(player=str(trigger.nick))
+        say(bot, trigger, response)
         return False
     return True
 
@@ -43,7 +47,8 @@ def print_board(bot, trigger):
     if not check_phase_play(bot, trigger):
         return
     game = get_game(bot)
-    rows = game.render_board_rows(column_width=COLUMN_WIDTH, include_colors=False)
+    rows = game.render_board_rows(column_width=COLUMN_WIDTH,
+                                  include_colors=False)
     for row in rows:
         say(bot, trigger, row)
 
@@ -51,8 +56,9 @@ def print_board(bot, trigger):
 @commands('rules')
 def rules(bot, trigger):
     """Prints the rules"""
-    say(bot, trigger, "RULES:    https://static1.squarespace.com/static/54da1198e4b0e9d26e55b0fc"
-            "/t/5646752be4b0c85596a66ac7/1447458091793/codenames-rules-en.pdf")
+    say(bot, trigger, 'RULES: https://static1.squarespace.com/static/'
+                      '54da1198e4b0e9d26e55b0fc/t/5646752be4b0c85596a66ac7'
+                      '/1447458091793/codenames-rules-en.pdf')
 
 
 @require_privmsg
@@ -62,12 +68,12 @@ def print_board_full(bot, trigger):
     if not check_phase_play(bot, trigger):
         return
     game = get_game(bot)
-    
     player = str(trigger.nick)
     if player not in game.spymasters.values():
         say(bot, trigger, "You won't fool me!")
         return
-    rows = game.render_board_rows(column_width=COLUMN_WIDTH, include_colors=True)
+    rows = game.render_board_rows(column_width=COLUMN_WIDTH,
+                                  include_colors=True)
     for row in rows:
         say(bot, trigger, row)
 
@@ -80,11 +86,13 @@ def print_teams(bot, trigger):
     game = get_game(bot)
     say(bot, trigger, "Team {team}:".format(team=Team.red))
     say(bot, trigger, str(game.teams[Team.red]))
-    say(bot, trigger, "With {spy} as spymaster.".format(spy=game.spymasters[Team.red]))
+    say(bot, trigger, "With {spy} as spymaster.".format(
+        spy=game.spymasters[Team.red]))
     say(bot, trigger, "~~~ VS ~~~")
     say(bot, trigger, "Team {team}:".format(team=Team.blue))
     say(bot, trigger, str(game.teams[Team.blue]))
-    say(bot, trigger, "With {spy} as spymaster.".format(spy=game.spymasters[Team.blue]))
+    say(bot, trigger, "With {spy} as spymaster.".format(
+        spy=game.spymasters[Team.blue]))
 
 
 @commands('codenames')
@@ -108,14 +116,16 @@ def print_tutorial(bot, trigger):
 @require_chanmsg
 @commands('setup')
 def setup_game(bot, trigger):
-    """Sets up a game of Codenames. Waits for players and spymasters to join."""
+    """Sets up a game of Codenames. Waits for players and spymasters to
+    join."""
     if BOT_MEMORY_KEY in bot.memory:
         pass  # but need to end last game and restart maybe
-    
+
     new_game(bot)
-    say(bot, trigger, 'Setting up Codenames, please !join (optional red|blue) to join a team '
-            'and !spymaster to become your team\'s spymaster. Say !start to '
-            'start the game once teams are decided.')
+    say(bot, trigger, 'Setting up Codenames, please !join (optional red|blue) '
+                      'to join a team and !spymaster to become your team\'s '
+                      'spymaster. Say !start to start the game once teams are '
+                      'decided.')
 
 
 @require_chanmsg
@@ -133,7 +143,8 @@ def suicide(bot, trigger):
 @require_chanmsg
 @commands('join')
 def add_player(bot, trigger):
-    """Adds a player to the game, to the specified team. Leave empty to get assigned automatically."""
+    """Adds a player to the game, to the specified team. Leave empty to get
+    assigned automatically."""
     if not check_phase_setup(bot, trigger):
         return
     game = get_game(bot)
@@ -151,7 +162,7 @@ def add_player(bot, trigger):
         return
     game.add_player(str(trigger.nick), team)
     response = 'Added {player} to {team_color} team.'.format(
-        player=str(trigger.nick), team_color=team.value)
+        player=str(trigger.nick), team_color=team.color)
     say(bot, trigger, response)
 
 
@@ -165,7 +176,7 @@ def remove_player(bot, trigger):
     team = game.remove_player(str(trigger.nick))
     if team is not None:
         response = 'Removed {player} from {team_color} team.'.format(
-            player=str(trigger.nick), team_color=team.value)
+            player=str(trigger.nick), team_color=team.color)
         say(bot, trigger, response)
 
 
@@ -183,7 +194,7 @@ def set_spymaster(bot, trigger):
     else:
         game.set_spymaster(team, str(trigger.nick))
         response = '{player} is now the {team} spymaster.'.format(
-            player=str(trigger.nick), team=team.value)
+            player=str(trigger.nick), team=team.color)
     say(bot, trigger, response)
 
 
@@ -209,7 +220,7 @@ def start_game(bot, trigger):
     print_board(bot, trigger)
     # print_tutorial(bot, trigger)
     say(bot, trigger, 'It is now the {team_color} team\'s turn!'.format(
-        team_color=str(game.moving_team.value)))
+        team_color=str(game.moving_team.color)))
 
 
 @require_chanmsg
@@ -219,7 +230,7 @@ def player_choose(bot, trigger):
     if not check_phase_play(bot, trigger):
         return
     game = get_game(bot)
-    
+
     word = trigger.groups(17)[2].strip()  # first argument, default 17
     if word == 17:
         say(bot, trigger, 'Touch what?')
@@ -233,29 +244,33 @@ def player_choose(bot, trigger):
         return
     game_event = game.reveal_card_by_coordinates(*word_pos)
     if game_event is GameEvent.continue_turn:
-        say(bot, trigger, 'Indeed! {word} belongs to you, team {team}.'.format(word=word, team=game.moving_team))
+        say(bot, trigger, 'Indeed! {word} belongs to you, team {team}.'.format(
+            word=word, team=game.moving_team))
         print_board(bot, trigger)
         return
     elif game_event is GameEvent.end_turn:
         say(bot, trigger, 'No! Mistake! Bad guess!')
         say(bot, trigger, 'What an embarrassment.')
-        say(bot, trigger, '{other_team} spymaster, make your move!'.format(team=game.moving_team.value,
-                                                                 other_team=str(game.moving_team.other()).upper()))
+        say(bot, trigger, '{other_team} spymaster, make your move!'.format(
+            team=game.moving_team.color,
+            other_team=str(game.moving_team.other()).upper()))
         print_board(bot, trigger)
         game.next_turn()
         return
     elif game_event is GameEvent.end_game:
-        say(bot, trigger, 
-            'End of game! This bot is a WIP and cannot say if this is a winning move'
-            ' or an accidental assassin pick. Sorry!')
+        say(bot, trigger,
+            'End of game! This bot is a WIP and cannot say if this is a '
+            'winning move or an accidental assassin pick. Sorry!')
 
-        rows = game.render_board_rows(column_width=COLUMN_WIDTH, include_colors=True)
+        rows = game.render_board_rows(column_width=COLUMN_WIDTH,
+                                      include_colors=True)
         for row in rows:
             say(bot, trigger, row)
-            
+
         return
     else:
-        say(bot, trigger, 'you found a bug! this event does not compute: {event}'.format(event=game_event))
+        say(bot, trigger, 'you found a bug! this event does not compute: '
+                          '{event}'.format(event=game_event))
         return
 
 
@@ -266,9 +281,10 @@ def team_pass(bot, trigger):
     if not check_phase_play(bot, trigger):
         return
     game = get_game(bot)
-    
-    say(bot, trigger, 
+
+    say(bot, trigger,
         'Team {team} has ended its turn. '
-        '{other_team} spymaster, make your move!'.format(team=game.moving_team.value,
-                                                         other_team=str(game.moving_team.other()).upper()))
+        '{other_team} spymaster, make your move!'.format(
+            team=game.moving_team.color,
+            other_team=str(game.moving_team.other()).upper()))
     game.next_turn()

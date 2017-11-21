@@ -7,9 +7,10 @@ import enum
 import itertools
 import math
 import json
+import os
 from typing import List, Tuple, Union, Iterable
 
-import os
+
 import sopel.formatting as irc_format
 
 MINIMUM_PLAYERS = 4
@@ -78,8 +79,10 @@ class GameBoard(object):
 
     @staticmethod
     def generate_grid(word_deck: List[str]) -> List[List[str]]:
-        board_words = list(map(str.upper, random.sample(word_deck, BOARD_SIZE * BOARD_SIZE)))
-        grid = [board_words[i:i + BOARD_SIZE] for i in range(0, BOARD_SIZE * BOARD_SIZE, BOARD_SIZE)]
+        word_sample = random.sample(word_deck, BOARD_SIZE * BOARD_SIZE)
+        board_words = list(map(str.upper, word_sample))
+        grid = [board_words[i:i + BOARD_SIZE]
+                for i in range(0, BOARD_SIZE * BOARD_SIZE, BOARD_SIZE)]
         return grid
 
     @staticmethod
@@ -143,10 +146,11 @@ class IrcCodenamesGame(object):
     reveal cards and spit out the appropriate event in response.
     """
     word_deck_fn = 'word_deck.json'
+    word_deck_dirpath = os.path.dirname(os.path.abspath(__file__))
     board_column_width = 15
 
-    def __init__(self, red_team: List[str] = None, blue_team: List[str] = None, blue_spymaster: str = None,
-                 red_spymaster: str = None):
+    def __init__(self, red_team: List[str] = None, blue_team: List[str] = None,
+                 blue_spymaster: str = None, red_spymaster: str = None):
         self.teams = dict()
         self.teams[Team.red] = set(red_team or [])
         self.teams[Team.blue] = set(blue_team or [])
@@ -154,7 +158,9 @@ class IrcCodenamesGame(object):
         self.spymasters = dict()
         self.spymasters[Team.red] = red_spymaster
         self.spymasters[Team.blue] = blue_spymaster
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), self.word_deck_fn)) as fp:
+        word_deck_filepath = os.path.join(self.word_deck_dirpath,
+                                          self.word_deck_fn)
+        with open(word_deck_filepath) as fp:
             self.word_deck = json.load(fp)
         self.board = None
         self.starting_team = random.choice(list(Team))
@@ -166,9 +172,9 @@ class IrcCodenamesGame(object):
     def generate_spy_key(starting_team: Team) -> List[List[CardType]]:
         """Generate a random spy key."""
         cards = [starting_team.card_type()] * (TEAM_CARD_COUNT + 1) \
-                + [starting_team.other().card_type()] * TEAM_CARD_COUNT \
-                + [CardType.bystander] * BYSTANDER_CARD_COUNT \
-                + [CardType.assassin] * ASSASSIN_CARD_COUNT
+            + [starting_team.other().card_type()] * TEAM_CARD_COUNT \
+            + [CardType.bystander] * BYSTANDER_CARD_COUNT \
+            + [CardType.assassin] * ASSASSIN_CARD_COUNT
         random.shuffle(cards)
         spy_key = [cards[i:i + BOARD_SIZE]
                    for i in range(0, BOARD_SIZE * BOARD_SIZE, BOARD_SIZE)]
@@ -179,11 +185,12 @@ class IrcCodenamesGame(object):
         if False:  # TODO TEMPORARY WORKAROUND
             for team in Team:
                 if len(self.teams[team]) < 2:
-                    raise IrcGameError('{color} team must have at least 2 players.'
-                                       .format(color=team.value.capitalize()))
+                    raise IrcGameError(
+                        '{color} team must have at least 2 players.'.format(
+                            color=team.color.capitalize()))
                 if self.spymasters[team] is None:
                     raise IrcGameError('{color} team must have a spymaster.'
-                                       .format(color=team.value.capitalize()))
+                                       .format(color=team.color.capitalize()))
         self.initialize_board()
         self.phase = GamePhase.in_progress
 
@@ -232,7 +239,6 @@ class IrcCodenamesGame(object):
                 return team
         return None
 
-
     def get_team_members(self, team: Team) -> List[str]:
         return self.teams[team]
 
@@ -277,8 +283,8 @@ class IrcCodenamesGame(object):
                 'Game has already concluded, and {team_color} team was '
                 'victorious!'.format(team_color=self.winning_team.color))
 
-    def render_board_rows(self, column_width: int = None, include_colors:
-    bool = False) -> List[str]:
+    def render_board_rows(self, column_width: int = None,
+                          include_colors: bool = False) -> List[str]:
 
         column_width = column_width or self.board_column_width
 
@@ -300,7 +306,7 @@ class IrcCodenamesGame(object):
             }
             return type_color[card_type]
 
-        def render_row(row: List[str], width: int, card_types: List[CardType] = None):
+        def render_row(row: List[str], width: int, card_types: List[CardType]):
             template = '{}' * BOARD_SIZE
             words = []
             for index, word in enumerate(row):
@@ -309,9 +315,11 @@ class IrcCodenamesGame(object):
                 padded_word = pad_word(word, width)
                 if word == REVEALED_CARD_TOKEN:
                     if card_type == CardType.assassin:
-                        colored_word = irc_format.bold(irc_format.color(padded_word, color, irc_format.colors.BLACK))
+                        colored_word = irc_format.bold(irc_format.color(
+                            padded_word, color, irc_format.colors.BLACK))
                     else:
-                        colored_word = irc_format.bold(irc_format.color(padded_word, color))
+                        colored_word = irc_format.bold(irc_format.color(
+                            padded_word, color))
                 elif include_colors:
                     colored_word = irc_format.color(padded_word, color)
                 else:
