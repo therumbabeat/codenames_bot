@@ -199,10 +199,11 @@ class IrcCodenamesGame(object):
         self.initialize_board()
         self.phase = GamePhase.in_progress
 
-    def restart(self):
+    def reset(self):
         self.starting_team = random.choice(list(Team))
         self.moving_team = self.starting_team
-        self.start()
+        self.board = None
+        self.phase = GamePhase.setup
 
     def initialize_board(self):
         spy_key = self.generate_spy_key(self.starting_team)

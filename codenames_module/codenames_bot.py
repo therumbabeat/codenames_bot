@@ -321,6 +321,11 @@ def team_pass(bot, trigger):
         return
     game = get_game(bot)
 
+    # Check if the player is on the currently moving team
+    player_team = game.get_player_team(str(trigger.nick))
+    if player_team is not game.moving_team:
+        return
+
     moving_team_name = get_decorated_team_name(game.moving_team)
     other_team_name = get_decorated_team_name(game.moving_team.other())
     say(bot, trigger,
@@ -329,3 +334,13 @@ def team_pass(bot, trigger):
             moving_team_name=moving_team_name,
             other_team_name=other_team_name))
     game.next_turn()
+
+
+@require_chanmsg
+@commands('restart')
+def restart_game(bot, trigger):
+    """Restart game with the current teams."""
+    game = get_game(bot)
+    game.reset()
+    say(bot, trigger, 'Restarting game with the current teams.')
+    start_game(bot, trigger)
