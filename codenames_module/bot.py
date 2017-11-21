@@ -1,5 +1,6 @@
 from sopel.module import (
     commands, require_privmsg, require_chanmsg)
+import sopel.formatting as irc_format
 
 from .codenames import (
     IrcCodenamesGame, Team, GamePhase, IrcGameError, REVEALED_CARD_TOKEN,
@@ -17,9 +18,22 @@ def new_game(bot):
     bot.memory[BOT_MEMORY_KEY] = IrcCodenamesGame()
 
 
+def get_decorated_team_name(team: Team) -> str:
+    team_name = '{color} team'.format(color=team.color.capitalize())
+    if team is Team.red:
+        irc_color = irc_format.colors.RED
+    else:
+        irc_color = irc_format.colors.LIGHT_BLUE
+    decorated_name = irc_format.bold(irc_format.color(team_name, irc_color))
+    return decorated_name
+
+
+def setup(bot):
+    new_game(bot)
+
+
 def check_phase_setup(bot, trigger):
-    if BOT_MEMORY_KEY not in bot.memory \
-            or get_game(bot).phase != GamePhase.setup:
+    if get_game(bot).phase != GamePhase.setup:
         response = '{player}: Can only do that while setting up the ' \
                    'game.'.format(player=str(trigger.nick))
         say(bot, trigger, response)
@@ -28,8 +42,7 @@ def check_phase_setup(bot, trigger):
 
 
 def check_phase_play(bot, trigger):
-    if BOT_MEMORY_KEY not in bot.memory \
-            or get_game(bot).phase != GamePhase.in_progress:
+    if get_game(bot).phase != GamePhase.in_progress:
         response = '{player}: Can only do that while mid-' \
                    'game.'.format(player=str(trigger.nick))
         say(bot, trigger, response)
@@ -78,21 +91,26 @@ def print_board_full(bot, trigger):
         say(bot, trigger, row)
 
 
+def print_team(bot, trigger, team: Team):
+    game = get_game(bot)
+    team_name = get_decorated_team_name(team)
+    team_members = game.get_team_members(team)
+    team_spymaster = game.spymasters[team]
+    say(bot, trigger, '{team_name}:'.format(team_name=team_name))
+    say(bot, trigger, ','.join(team_members))
+    if not team_spymaster:
+        say(bot, trigger, 'Without a spymaster chosen.')
+    else:
+        say(bot, trigger, 'With {spy} as spymaster.'.format(
+            spy=team_spymaster))
+
+
 @commands('teams')
 def print_teams(bot, trigger):
     """Prints the team members"""
-    if BOT_MEMORY_KEY not in bot.memory:
-        return
-    game = get_game(bot)
-    say(bot, trigger, "Team {team}:".format(team=Team.red))
-    say(bot, trigger, str(game.teams[Team.red]))
-    say(bot, trigger, "With {spy} as spymaster.".format(
-        spy=game.spymasters[Team.red]))
+    print_team(bot, trigger, Team.blue)
     say(bot, trigger, "~~~ VS ~~~")
-    say(bot, trigger, "Team {team}:".format(team=Team.blue))
-    say(bot, trigger, str(game.teams[Team.blue]))
-    say(bot, trigger, "With {spy} as spymaster.".format(
-        spy=game.spymasters[Team.blue]))
+    print_team(bot, trigger, Team.red)
 
 
 @commands('codenames')
@@ -118,9 +136,6 @@ def print_tutorial(bot, trigger):
 def setup_game(bot, trigger):
     """Sets up a game of Codenames. Waits for players and spymasters to
     join."""
-    if BOT_MEMORY_KEY in bot.memory:
-        pass  # but need to end last game and restart maybe
-
     new_game(bot)
     say(bot, trigger, 'Setting up Codenames, please !join (optional red|blue) '
                       'to join a team and !spymaster to become your team\'s '
@@ -161,8 +176,9 @@ def add_player(bot, trigger):
         say(bot, trigger, 'You call {this} a team??'.format(this=team_color))
         return
     game.add_player(str(trigger.nick), team)
-    response = 'Added {player} to {team_color} team.'.format(
-        player=str(trigger.nick), team_color=team.color)
+    team_name = get_decorated_team_name(team)
+    response = 'Added {player} to {team_name}.'.format(
+        player=str(trigger.nick), team_name=team_name)
     say(bot, trigger, response)
 
 
@@ -175,8 +191,9 @@ def remove_player(bot, trigger):
     game = get_game(bot)
     team = game.remove_player(str(trigger.nick))
     if team is not None:
-        response = 'Removed {player} from {team_color} team.'.format(
-            player=str(trigger.nick), team_color=team.color)
+        team_name = get_decorated_team_name(team)
+        response = 'Removed {player} from {team_name} team.'.format(
+            player=str(trigger.nick), team_name=team_name)
         say(bot, trigger, response)
 
 
@@ -193,8 +210,9 @@ def set_spymaster(bot, trigger):
                    'spymaster.'.format(player=str(trigger.nick))
     else:
         game.set_spymaster(team, str(trigger.nick))
-        response = '{player} is now the {team} spymaster.'.format(
-            player=str(trigger.nick), team=team.color)
+        team_name = get_decorated_team_name(team)
+        response = '{player} is now the {team_name} spymaster.'.format(
+            player=str(trigger.nick), team_name=team_name)
     say(bot, trigger, response)
 
 
@@ -218,9 +236,9 @@ def start_game(bot, trigger):
         return
     say(bot, trigger, 'Codenames game now starting!')
     print_board(bot, trigger)
-    # print_tutorial(bot, trigger)
-    say(bot, trigger, 'It is now the {team_color} team\'s turn!'.format(
-        team_color=str(game.moving_team.color)))
+    team_name = get_decorated_team_name(game.moving_team)
+    say(bot, trigger, 'It is now the {team_name}\'s turn!'.format(
+        team_name=team_name))
 
 
 @require_chanmsg
@@ -231,6 +249,12 @@ def player_choose(bot, trigger):
         return
     game = get_game(bot)
 
+    player_team = game.get_player_team(str(trigger.nick))
+    if player_team is not game.moving_team:
+        return
+
+    player_team_name = get_decorated_team_name(player_team)
+    other_team_name = get_decorated_team_name(player_team.other())
     word = trigger.groups(17)[2].strip()  # first argument, default 17
     if word == 17:
         say(bot, trigger, 'Touch what?')
@@ -244,23 +268,33 @@ def player_choose(bot, trigger):
         return
     game_event = game.reveal_card_by_coordinates(*word_pos)
     if game_event is GameEvent.continue_turn:
-        say(bot, trigger, 'Indeed! {word} belongs to you, team {team}.'.format(
-            word=word, team=game.moving_team))
+        say(bot, trigger, 'Indeed! {word} belongs to you, {team_name}.'.format(
+            word=word, team_name=player_team_name))
         print_board(bot, trigger)
         return
     elif game_event is GameEvent.end_turn:
         say(bot, trigger, 'No! Mistake! Bad guess!')
         say(bot, trigger, 'What an embarrassment.')
         say(bot, trigger, '{other_team} spymaster, make your move!'.format(
-            team=game.moving_team.color,
-            other_team=str(game.moving_team.other()).upper()))
+            other_team=other_team_name))
         print_board(bot, trigger)
         game.next_turn()
         return
     elif game_event is GameEvent.end_game:
-        say(bot, trigger,
-            'End of game! This bot is a WIP and cannot say if this is a '
-            'winning move or an accidental assassin pick. Sorry!')
+        winning_team_name = get_decorated_team_name(game.winning_team)
+        losing_team_name = get_decorated_team_name(game.winning_team.other())
+        if game.board.assassin_revealed():
+            response = '{losing_team_name} revealed the assassin! ' \
+                       '{winning_team_name} wins the game!'.format(
+                        losing_team_name=losing_team_name,
+                        winning_team_name=winning_team_name
+                        )
+        else:
+            response = '{winning_team_name} has revealed all of their ' \
+                       'agents, and are victorious! Congrats!'.format(
+                        winning_team_name=winning_team_name
+                        )
+        say(bot, trigger, response)
 
         rows = game.render_board_rows(column_width=COLUMN_WIDTH,
                                       include_colors=True)
@@ -282,9 +316,11 @@ def team_pass(bot, trigger):
         return
     game = get_game(bot)
 
+    moving_team_name = get_decorated_team_name(game.moving_team)
+    other_team_name = get_decorated_team_name(game.moving_team.other())
     say(bot, trigger,
-        'Team {team} has ended its turn. '
-        '{other_team} spymaster, make your move!'.format(
-            team=game.moving_team.color,
-            other_team=str(game.moving_team.other()).upper()))
+        '{moving_team_name} have ended their turn. '
+        '{other_team_name} spymaster, make your move!'.format(
+            moving_team_name=moving_team_name,
+            other_team_name=other_team_name))
     game.next_turn()

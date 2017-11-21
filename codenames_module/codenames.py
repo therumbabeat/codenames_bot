@@ -126,6 +126,9 @@ class GameBoard(object):
     def cards_remaining(self, card_type: CardType) -> int:
         return self._cards_remaining[card_type]
 
+    def assassin_revealed(self) -> bool:
+        return self._cards_remaining[CardType.assassin] == 0
+
     def get_word_position(self, word: str) -> Union[Tuple[int, int], None]:
         if word == REVEALED_CARD_TOKEN:
             raise ValueError('Searching for the revealed token is not '
