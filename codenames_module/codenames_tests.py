@@ -3,7 +3,7 @@ import random
 
 import faker
 
-from codenames import (
+from .codenames import (
     Team, CardType, GameBoard, IrcCodenamesGame, TEAM_CARD_COUNT,
     BYSTANDER_CARD_COUNT, ASSASSIN_CARD_COUNT)
 
