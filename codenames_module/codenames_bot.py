@@ -2,9 +2,9 @@ from sopel.module import (
     commands, require_privmsg, require_chanmsg)
 import sopel.formatting as irc_format
 
-from .codenames import (
+from .codenames_game import (
     IrcCodenamesGame, Team, GamePhase, IrcGameError, REVEALED_CARD_TOKEN,
-    GameEvent)
+    GameEvent, DEBUG)
 
 BOT_MEMORY_KEY = 'codenames_game'
 COLUMN_WIDTH = 12
@@ -249,9 +249,14 @@ def player_choose(bot, trigger):
         return
     game = get_game(bot)
 
+    # Check if the player is on the currently moving team
     player_team = game.get_player_team(str(trigger.nick))
     if player_team is not game.moving_team:
         return
+
+    # Check if the player is the spymaster
+    if not DEBUG and str(trigger.nick) == game.spymasters[player_team]:
+        bot.say('Spymasters aren\'t allowed to touch cards.', trigger.nick)
 
     player_team_name = get_decorated_team_name(player_team)
     other_team_name = get_decorated_team_name(player_team.other())

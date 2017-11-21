@@ -13,6 +13,8 @@ from typing import List, Tuple, Union, Iterable
 
 import sopel.formatting as irc_format
 
+DEBUG = True
+
 MINIMUM_PLAYERS = 4
 REVEALED_CARD_TOKEN = '#####'
 BOARD_SIZE = 5
@@ -185,7 +187,7 @@ class IrcCodenamesGame(object):
 
     def start(self):
         """Start the game. Throw an exception if something is wrong."""
-        if False:  # TODO TEMPORARY WORKAROUND
+        if not DEBUG:
             for team in Team:
                 if len(self.teams[team]) < 2:
                     raise IrcGameError(
