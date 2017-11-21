@@ -289,16 +289,16 @@ def spymaster_hint(bot, trigger):
 
     word = trigger.groups(17)[2]
     number = trigger.groups(17)[3]
+    error_msg = 'The second argument must either be a number ' \
+                'in the 0-9 range or "unlimited".'
     try:
         n = int(number)
     except ValueError:
         if number != 'unlimited':
-            say(bot, trigger, 'The second argument must either be a number '
-                              'in the 0-9 range or "unlimited".')
-        return
+            say(bot, trigger, error_msg)
+            return
     if n < 0 or n > 9:
-        say(bot, trigger, 'The second argument must either be a number '
-                          'in the 0-9 range or * for unlimited.')
+        say(bot, trigger, error_msg)
         return
 
     team_name = get_decorated_team_name(player_team)
@@ -457,7 +457,7 @@ def rotate_game(bot, trigger):
     game.teams[Team.blue] = set(players[middle:])
     game.spymasters[Team.red] = players[0]
     game.spymasters[Team.blue] = players[middle]
-    
+
     start_game(bot, trigger)
 
 
