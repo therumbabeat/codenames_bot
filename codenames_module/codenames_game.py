@@ -56,7 +56,8 @@ class Team(enum.Enum):
 class GameEvent(enum.Enum):
     """Event as a result of revealing a card."""
     end_game = enum.auto()
-    end_turn = enum.auto()
+    end_turn_bystander = enum.auto()
+    end_turn_enemy = enum.auto()
     continue_turn = enum.auto()
 
 
@@ -90,9 +91,15 @@ class GameBoard(object):
     @staticmethod
     def validate_deck(word_deck: List[str]):
         """Check if the deck is valid. Currently this just checks whether
-        it contains any duplicates."""
+        it contains any duplicates and removes non-words."""
         if len(word_deck) != len(set(word_deck)):
             raise ValueError('Deck must be composed of unique words.')
+        goodwords = []
+        for word in word_deck:
+            if " " in word:
+                print("Illegal word was removed:    "+word)
+            else:
+                goodwords.append(word)
 
     def reveal_card_by_coordinates(self, i: int, j: int) -> CardType:
         if self.is_revealed(i, j):
