@@ -20,7 +20,7 @@ def check_phase_setup(bot, trigger):
     if BOT_MEMORY_KEY not in bot.memory or get_game(bot).phase != GamePhase.setup:
         response = '{player}: Can only do that while setting up the ' \
                    'game.'.format(player=str(trigger.nick))
-        bot.say(response)
+        say(bot, trigger, response)
         return False
     return True
 
@@ -33,6 +33,10 @@ def check_phase_play(bot, trigger):
     return True
 
 
+def say(bot, trigger, text):
+    bot.write(('PRIVMSG', trigger.sender), text)
+
+
 @commands('print')
 def print_board(bot, trigger):
     """Prints the game board"""
@@ -41,13 +45,13 @@ def print_board(bot, trigger):
     game = get_game(bot)
     rows = game.render_board_rows(column_width=COLUMN_WIDTH, include_colors=False)
     for row in rows:
-        bot.say(row)
+        say(bot, trigger, row)
 
 
 @commands('rules')
 def rules(bot, trigger):
     """Prints the rules"""
-    bot.say("RULES:    https://static1.squarespace.com/static/54da1198e4b0e9d26e55b0fc"
+    say(bot, trigger, "RULES:    https://static1.squarespace.com/static/54da1198e4b0e9d26e55b0fc"
             "/t/5646752be4b0c85596a66ac7/1447458091793/codenames-rules-en.pdf")
 
 
@@ -61,11 +65,11 @@ def print_board_full(bot, trigger):
     
     player = str(trigger.nick)
     if player not in game.spymasters.values():
-        bot.say("You won't fool me!")
+        say(bot, trigger, "You won't fool me!")
         return
     rows = game.render_board_rows(column_width=COLUMN_WIDTH, include_colors=True)
     for row in rows:
-        bot.say(row)
+        say(bot, trigger, row)
 
 
 @commands('teams')
@@ -74,31 +78,31 @@ def print_teams(bot, trigger):
     if BOT_MEMORY_KEY not in bot.memory:
         return
     game = get_game(bot)
-    bot.say("Team {team}:".format(team=Team.red))
-    bot.say(str(game.teams[Team.red]))
-    bot.say("With {spy} as spymaster.".format(spy=game.spymasters[Team.red]))
-    bot.say("~~~ VS ~~~")
-    bot.say("Team {team}:".format(team=Team.blue))
-    bot.say(str(game.teams[Team.blue]))
-    bot.say("With {spy} as spymaster.".format(spy=game.spymasters[Team.blue]))
+    say(bot, trigger, "Team {team}:".format(team=Team.red))
+    say(bot, trigger, str(game.teams[Team.red]))
+    say(bot, trigger, "With {spy} as spymaster.".format(spy=game.spymasters[Team.red]))
+    say(bot, trigger, "~~~ VS ~~~")
+    say(bot, trigger, "Team {team}:".format(team=Team.blue))
+    say(bot, trigger, str(game.teams[Team.blue]))
+    say(bot, trigger, "With {spy} as spymaster.".format(spy=game.spymasters[Team.blue]))
 
 
 @commands('codenames')
 def print_tutorial(bot, trigger):
     """Prints all the commands for the codenames game."""
-    bot.say('COMMANDS:')
-    bot.say('* codenames')
-    bot.say('* setup')
-    bot.say('* join <team?>')
-    bot.say('* leave')
-    bot.say('* start')
-    bot.say('* spymaster')
-    bot.say('* choose <word>')
-    bot.say('* pass')
-    bot.say('* print')
-    bot.say('* teams')
-    bot.say('* rules')
-    bot.say('* print_full (only spymasters in PM can use this)')
+    say(bot, trigger, 'COMMANDS:')
+    say(bot, trigger, '* codenames')
+    say(bot, trigger, '* setup')
+    say(bot, trigger, '* join <team?>')
+    say(bot, trigger, '* leave')
+    say(bot, trigger, '* start')
+    say(bot, trigger, '* spymaster')
+    say(bot, trigger, '* choose <word>')
+    say(bot, trigger, '* pass')
+    say(bot, trigger, '* print')
+    say(bot, trigger, '* teams')
+    say(bot, trigger, '* rules')
+    say(bot, trigger, '* print_full (only spymasters in PM can use this)')
 
 
 @require_chanmsg
@@ -109,7 +113,7 @@ def setup_game(bot, trigger):
         pass  # but need to end last game and restart maybe
     
     new_game(bot)
-    bot.say('Setting up Codenames, please !join (optional red|blue) to join a team '
+    say(bot, trigger, 'Setting up Codenames, please !join (optional red|blue) to join a team '
             'and !spymaster to become your team\'s spymaster. Say !start to '
             'start the game once teams are decided.')
 
@@ -118,7 +122,7 @@ def setup_game(bot, trigger):
 @commands('fuck_off')
 def suicide(bot, trigger):
     """This kills the bot"""
-    bot.say('PEACE OUT!')
+    say(bot, trigger, 'PEACE OUT!')
     bot.write(('QUIT', 'Goodbye cruel world...'))
     import os
     import signal
@@ -143,12 +147,12 @@ def add_player(bot, trigger):
     try:
         team = Team(team_color)
     except ValueError:
-        bot.say('You call {this} a team??'.format(this=team_color))
+        say(bot, trigger, 'You call {this} a team??'.format(this=team_color))
         return
     game.add_player(str(trigger.nick), team)
     response = 'Added {player} to {team_color} team.'.format(
         player=str(trigger.nick), team_color=team.value)
-    bot.say(response)
+    say(bot, trigger, response)
 
 
 @require_chanmsg
@@ -162,7 +166,7 @@ def remove_player(bot, trigger):
     if team is not None:
         response = 'Removed {player} from {team_color} team.'.format(
             player=str(trigger.nick), team_color=team.value)
-        bot.say(response)
+        say(bot, trigger, response)
 
 
 @require_chanmsg
@@ -180,13 +184,13 @@ def set_spymaster(bot, trigger):
         game.set_spymaster(team, str(trigger.nick))
         response = '{player} is now the {team} spymaster.'.format(
             player=str(trigger.nick), team=team.value)
-    bot.say(response)
+    say(bot, trigger, response)
 
 
 @commands('hug')
 def hug(bot, trigger):
     response = "*hugs {player}*".format(player=str(trigger.nick))
-    bot.say(response)
+    say(bot, trigger, response)
 
 
 @require_chanmsg
@@ -199,12 +203,12 @@ def start_game(bot, trigger):
     try:
         game.start()
     except IrcGameError as err:
-        bot.say(str(err))
+        say(bot, trigger, str(err))
         return
-    bot.say('Codenames game now starting!')
+    say(bot, trigger, 'Codenames game now starting!')
     print_board(bot, trigger)
     # print_tutorial(bot, trigger)
-    bot.say('It is now the {team_color} team\'s turn!'.format(
+    say(bot, trigger, 'It is now the {team_color} team\'s turn!'.format(
         team_color=str(game.moving_team.value)))
 
 
@@ -218,40 +222,40 @@ def player_choose(bot, trigger):
     
     word = trigger.groups(17)[2].strip()  # first argument, default 17
     if word == 17:
-        bot.say('Touch what?')
+        say(bot, trigger, 'Touch what?')
         return
     if word == REVEALED_CARD_TOKEN:
-        bot.say('You won\'t trick me!')
+        say(bot, trigger, 'You won\'t trick me!')
         return
     word_pos = game.board.get_word_position(word)
     if word_pos is None:
-        bot.say('This card is not on the board!')
+        say(bot, trigger, 'This card is not on the board!')
         return
     game_event = game.reveal_card_by_coordinates(*word_pos)
     if game_event is GameEvent.continue_turn:
-        bot.say('Indeed! {word} belongs to you, team {team}.'.format(word=word, team=game.moving_team))
+        say(bot, trigger, 'Indeed! {word} belongs to you, team {team}.'.format(word=word, team=game.moving_team))
         print_board(bot, trigger)
         return
     elif game_event is GameEvent.end_turn:
-        bot.say('No! Mistake! Bad guess!')
-        bot.say('What an embarrassment.')
-        bot.say('{other_team} spymaster, make your move!'.format(team=game.moving_team.value,
+        say(bot, trigger, 'No! Mistake! Bad guess!')
+        say(bot, trigger, 'What an embarrassment.')
+        say(bot, trigger, '{other_team} spymaster, make your move!'.format(team=game.moving_team.value,
                                                                  other_team=str(game.moving_team.other()).upper()))
         print_board(bot, trigger)
         game.next_turn()
         return
     elif game_event is GameEvent.end_game:
-        bot.say(
+        say(bot, trigger, 
             'End of game! This bot is a WIP and cannot say if this is a winning move'
             ' or an accidental assassin pick. Sorry!')
 
         rows = game.render_board_rows(column_width=COLUMN_WIDTH, include_colors=True)
         for row in rows:
-            bot.say(row)
+            say(bot, trigger, row)
             
         return
     else:
-        bot.say('you found a bug! this event does not compute: {event}'.format(event=game_event))
+        say(bot, trigger, 'you found a bug! this event does not compute: {event}'.format(event=game_event))
         return
 
 
@@ -263,7 +267,7 @@ def team_pass(bot, trigger):
         return
     game = get_game(bot)
     
-    bot.say(
+    say(bot, trigger, 
         'Team {team} has ended its turn. '
         '{other_team} spymaster, make your move!'.format(team=game.moving_team.value,
                                                          other_team=str(game.moving_team.other()).upper()))

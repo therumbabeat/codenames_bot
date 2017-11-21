@@ -295,13 +295,15 @@ class IrcCodenamesGame(object):
             words = []
             for index, word in enumerate(row):
                 card_type = card_types[index]
-                color1 = card_type_color(card_type)
-                color2 = irc_format.colors.BLACK if card_type == CardType.assassin else irc_format.colors.WHITE
+                color = card_type_color(card_type)
                 padded_word = pad_word(word, width)
                 if word == REVEALED_CARD_TOKEN:
-                    colored_word = irc_format.bold(irc_format.color(padded_word, color1, color2))
+                    if card_type == CardType.assassin:
+                        colored_word = irc_format.bold(irc_format.color(padded_word, color, irc_format.colors.BLACK))
+                    else:
+                        colored_word = irc_format.bold(irc_format.color(padded_word, color))
                 elif include_colors:
-                    colored_word = irc_format.color(padded_word, color1, color2)
+                    colored_word = irc_format.color(padded_word, color)
                 else:
                     colored_word = padded_word
                 words.append(colored_word)
