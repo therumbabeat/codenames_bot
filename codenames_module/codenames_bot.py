@@ -241,9 +241,10 @@ def hug(bot, trigger):
 def send_board_to_spymasters(bot):
     game = get_game(bot)
     for team in (Team.red, Team.blue):
-        spymaster_name = game.spymasters[team]
+        spymaster_name = str(game.spymasters[team])
         rows = game.render_board_rows(column_width=COLUMN_WIDTH,
                                       spoil_colors=True)
+        
         for row in rows:
             bot.write(('PRIVMSG', spymaster_name), row)
 
@@ -397,7 +398,7 @@ def restart_game(bot, trigger):
 
 @require_chanmsg
 @commands('remix')
-def rotate_game(bot, trigger):
+def remix_game(bot, trigger):
     """Restart game with new teams/spymasters and a new board. """
     game = get_game(bot)
     game.reset()
@@ -406,14 +407,12 @@ def rotate_game(bot, trigger):
     players = list()
     players.extend(game.teams[Team.red])
     players.extend(game.teams[Team.blue])
-    game.teams[Team.red].clear()
-    game.teams[Team.red].clear()
     random.shuffle(players)
     middle = len(players) / 2
-    game.teams[Team.red].extend(players[:middle])
-    game.teams[Team.blue].extend(players[middle + 1:])
-    game.spymasters[Team.red] = game.teams[Team.red][0]
-    game.spymasters[Team.blue] = game.teams[Team.blue][1]
+    game.teams[Team.red] = set(players[:middle])
+    game.teams[Team.blue] = set(players[middle + 1:])
+    game.spymasters[Team.red] = game.teams[Team.red][0]  # it's a set so indexing is actually useless
+    game.spymasters[Team.blue] = game.teams[Team.blue][0]
     
     start_game(bot, trigger)
 
