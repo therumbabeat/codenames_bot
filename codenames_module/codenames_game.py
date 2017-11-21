@@ -163,7 +163,8 @@ class IrcCodenamesGame(object):
 
     def __init__(self, red_team: List[str] = None, blue_team: List[str] = None,
                  blue_spymaster: str = None, red_spymaster: str = None):
-        self.complete_original_spoiler_rows = None  # updated in codenames.bot.start_game()
+        # updated in codenames.bot.start_game()
+        self.complete_original_spoiler_rows = None
         self.teams = dict()
         self.teams[Team.red] = set(red_team or [])
         self.teams[Team.blue] = set(blue_team or [])
