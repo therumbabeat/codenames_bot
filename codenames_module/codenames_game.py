@@ -270,7 +270,7 @@ class IrcCodenamesGame(object):
             self.phase = GamePhase.finished
             return GameEvent.end_game
         elif revealed_card_type is CardType.bystander:
-            return GameEvent.end_turn
+            return GameEvent.end_turn_bystander
         else:
             revealed_card_team = revealed_card_type.team()
             if self.board.team_won(revealed_card_team):
@@ -278,7 +278,7 @@ class IrcCodenamesGame(object):
                 self.phase = GamePhase.finished
                 return GameEvent.end_game
             elif revealed_card_team is not self.moving_team:
-                return GameEvent.end_turn
+                return GameEvent.end_turn_enemy
         return GameEvent.continue_turn
     
     def reveal_card(self, word: str) -> GameEvent:
