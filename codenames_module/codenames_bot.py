@@ -452,11 +452,11 @@ def rotate_game(bot, trigger):
     players.extend(game.teams[Team.red])
     players.extend(game.teams[Team.blue])
     random.shuffle(players)
-    middle = len(players) / 2
+    middle = len(players) // 2
     game.teams[Team.red] = set(players[:middle])
-    game.teams[Team.blue] = set(players[middle + 1:])
-    game.spymasters[Team.red] = game.teams[Team.red][0]  # it's a set so indexing is actually useless
-    game.spymasters[Team.blue] = game.teams[Team.blue][0]
+    game.teams[Team.blue] = set(players[middle:])
+    game.spymasters[Team.red] = players[0]
+    game.spymasters[Team.blue] = players[middle]
     
     start_game(bot, trigger)
 
