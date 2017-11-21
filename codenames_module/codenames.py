@@ -306,25 +306,28 @@ class IrcCodenamesGame(object):
             }
             return type_color[card_type]
 
+        def decorate_word(word: str, card_type: CardType) -> str:
+            text_color = card_type_color(card_type)
+            if card_type == CardType.assassin:
+                bg_color = irc_format.colors.BLACK
+            else:
+                bg_color = None
+            decorated_word = irc_format.color(word, text_color, bg_color)
+            if word == REVEALED_CARD_TOKEN:
+                decorated_word = irc_format.bold(decorated_word)
+            return decorated_word
+
         def render_row(row: List[str], width: int, card_types: List[CardType]):
             template = '{}' * BOARD_SIZE
             words = []
             for index, word in enumerate(row):
                 card_type = card_types[index]
-                color = card_type_color(card_type)
                 padded_word = pad_word(word, width)
-                if word == REVEALED_CARD_TOKEN:
-                    if card_type == CardType.assassin:
-                        colored_word = irc_format.bold(irc_format.color(
-                            padded_word, color, irc_format.colors.BLACK))
-                    else:
-                        colored_word = irc_format.bold(irc_format.color(
-                            padded_word, color))
-                elif include_colors:
-                    colored_word = irc_format.color(padded_word, color)
+                if word == REVEALED_CARD_TOKEN or include_colors:
+                    decorated_word = decorate_word(padded_word, card_type)
                 else:
-                    colored_word = padded_word
-                words.append(colored_word)
+                    decorated_word = padded_word
+                words.append(decorated_word)
             return template.format(*[pad_word(word, width) for word in words])
 
         rendered_rows = []
