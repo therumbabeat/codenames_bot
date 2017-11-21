@@ -103,5 +103,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# Sopel config file
-sopel.cfg
+# Sopel files
+sopel*
+.directory
