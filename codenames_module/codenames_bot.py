@@ -11,6 +11,7 @@ from .codenames_game import (
 
 BOT_MEMORY_KEY = 'codenames_game'
 COLUMN_WIDTH = 12
+CONTROL_BOLD = '\x1d'
 
 
 def get_game(bot) -> IrcCodenamesGame:
@@ -49,10 +50,9 @@ def white_bold(string: str) -> str:
                                             irc_format.colors.LIGHT_GRAY))
 
 
-def italics(string: str):
-    return "\\x1D" \
-           + string \
-           + "\\x1D"
+def italics(text: str):
+    """Return the text, with bold IRC formatting."""
+    return ''.join([CONTROL_BOLD, text, CONTROL_BOLD])
 
 
 def print_team(bot, trigger, team: Team):
