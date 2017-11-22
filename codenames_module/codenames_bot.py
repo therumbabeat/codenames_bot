@@ -112,6 +112,40 @@ def check_phase_play(bot, trigger):
     return True
 
 
+@commands('debug')
+def toggle_debug(bot, trigger):
+    """>Debug mode<"""
+    if check_phase_play(bot, trigger) or check_phase_setup(bot, trigger):
+        game = get_game(bot)
+        game.DEBUG = not game.DEBUG
+        say(bot, trigger, "<beep boop>" if game.DEBUG else "<BEEP BOOP>")
+
+
+@commands('counts')
+def print_counts(bot, trigger):
+    """Print amount of cards of each type"""
+    if check_phase_play(bot, trigger):
+        game = get_game(bot)
+        
+        counts = game.board.count_all_cards()
+        
+        say(bot, trigger, irc_format.underline("CURRENT SCORE"))
+        say(bot, trigger, "Team {team}: {flp} cards revealed, "
+                          "{rem} cards remaining.".format(
+            team=Team.red.name,
+            flp=counts.revealed_red,
+            rem=counts.hidden_red))
+        say(bot, trigger, "Team {team}: {flp} cards revealed, "
+                          "{rem} cards remaining.".format(
+            team=Team.blue.name,
+            flp=counts.revealed_blue,
+            rem=counts.hidden_blue))
+        say(bot, trigger, "Bystanders remaining: {bys}."
+                          " Assassins: {ass}".format(
+            bys=counts.hidden_white,
+            ass=counts.black))
+
+
 def say(bot, trigger, text):
     bot.write(('PRIVMSG', trigger.sender), text)
 
