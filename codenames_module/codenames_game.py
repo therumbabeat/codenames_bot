@@ -313,10 +313,6 @@ class IrcCodenamesGame(object):
                 return GameEvent.end_turn_enemy
         return GameEvent.continue_turn
 
-    def reveal_card(self, word: str) -> GameEvent:
-        word_coordinates = self.board.get_word_coordinates(word)
-        return self.reveal_card_by_coordinates(*word_coordinates)
-
     def next_turn(self):
         self.moving_team = self.moving_team.other()
 
