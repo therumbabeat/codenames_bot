@@ -1,8 +1,9 @@
 import random
 
 from sopel.module import (
-    commands, require_privmsg, require_chanmsg)
+    commands, require_privmsg, require_chanmsg, example)
 import sopel.formatting as irc_format
+from sopel.tools import Identifier
 
 from .codenames_game import (
     IrcCodenamesGame, Team, GamePhase, IrcGameError, REVEALED_CARD_TOKEN,
@@ -18,6 +19,10 @@ def get_game(bot) -> IrcCodenamesGame:
 
 def new_game(bot):
     bot.memory[BOT_MEMORY_KEY] = IrcCodenamesGame()
+
+
+def get_arguments(trigger):
+    return [arg for arg in trigger.groups() if arg is not None][2:]
 
 
 def get_decorated_team_name(team: Team) -> str:
@@ -275,6 +280,7 @@ def start_game(bot, trigger):
 
 @require_chanmsg
 @commands('hint')
+@example('!hint artichoke 2')
 def spymaster_hint(bot, trigger):
     if not check_phase_play(bot, trigger):
         return
@@ -287,22 +293,27 @@ def spymaster_hint(bot, trigger):
     if str(trigger.nick) != game.spymasters[player_team]:
         return
 
-    word = trigger.groups(17)[2]
-    number = trigger.groups(17)[3]
+    args = get_arguments(trigger)
+    if len(args) < 2:
+        say(bot, trigger, 'This command requires at least two arguments.')
+        return
+
+    words = ' '.join(args[:-1])
+    number = args[-1]
     error_msg = 'The second argument must either be a number ' \
                 'in the 0-9 range or "unlimited".'
     try:
         n = int(number)
+        if n < 0 or n > 9:
+            say(bot, trigger, error_msg)
+            return
     except ValueError:
         if number != 'unlimited':
             say(bot, trigger, error_msg)
             return
-    if n < 0 or n > 9:
-        say(bot, trigger, error_msg)
-        return
 
     team_name = get_decorated_team_name(player_team)
-    hint = '{word} {number}'.format(word=word.upper(), number=number)
+    hint = '{words} {number}'.format(words=words.upper(), number=number)
     decorated_hint = irc_format.bold(irc_format.underline(hint))
     response = '{team_name}\'s hint is {hint}'.format(team_name=team_name,
                                                       hint=decorated_hint)
@@ -474,3 +485,42 @@ def finish_game(bot, trigger):
         say(bot, trigger, row)
 
     game.reset()
+
+
+@require_chanmsg
+@commands('rename')
+@example('!rename player1 player2')
+def rename_player(bot, trigger):
+    game = get_game(bot)
+    args = get_arguments(trigger)
+    if not len(args) == 2:
+        say(bot, trigger, 'This command requires exactly two arguments.')
+        return
+
+    removed_player = args[0]
+    added_player = args[1]
+
+    player_team = game.get_player_team(removed_player)
+    if player_team is None:
+        say(bot, trigger, '{removed_player} is not participating in the '
+                          'game.'.format(removed_player=removed_player))
+        return
+
+    if game.get_player_team(added_player) is not None:
+        say(bot, trigger, '{added_player} is already participating in the '
+                          'game.'.format(added_player=added_player))
+        return
+
+    channel_users = bot.channels[trigger.sender].users
+    if Identifier(added_player) not in channel_users:
+        say(bot, trigger, '{added_player} is not in this channel.'.format(
+            added_player=added_player))
+        return
+
+    game.remove_player(removed_player)
+    game.add_player(added_player, player_team)
+    team_name = get_decorated_team_name(player_team)
+    say(bot, trigger, 'Renamed {removed_player} to {added_player} in '
+                      '{team_name}.'.format(removed_player=removed_player,
+                                            added_player=added_player,
+                                            team_name=team_name))
