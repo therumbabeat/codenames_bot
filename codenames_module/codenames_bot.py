@@ -386,7 +386,7 @@ def player_choose(bot, trigger):
     
     # Check if the player is on the currently moving team
     player_team = game.get_player_team(str(trigger.nick))
-    if player_team is not game.moving_team:
+    if not game.DEBUG and player_team is not game.moving_team:
         return
     
     # Check if the player is the spymaster
@@ -477,7 +477,7 @@ def team_pass(bot, trigger):
     
     # Check if the player is on the currently moving team
     player_team = game.get_player_team(str(trigger.nick))
-    if player_team is not game.moving_team:
+    if not game.DEBUG and player_team is not game.moving_team:
         return
     
     print_end_turn(bot, trigger)
