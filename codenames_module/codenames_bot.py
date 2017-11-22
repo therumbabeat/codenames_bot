@@ -115,10 +115,9 @@ def check_phase_play(bot, trigger):
 @commands('debug')
 def toggle_debug(bot, trigger):
     """>Debug mode<"""
-    if check_phase_play(bot, trigger) or check_phase_setup(bot, trigger):
-        game = get_game(bot)
-        game.DEBUG = not game.DEBUG
-        say(bot, trigger, "<beep boop>" if game.DEBUG else "<BEEP BOOP>")
+    game = get_game(bot)
+    game.DEBUG = not game.DEBUG
+    say(bot, trigger, "<beep boop>" if game.DEBUG else "<BEEP BOOP>")
 
 
 @commands('counts')
