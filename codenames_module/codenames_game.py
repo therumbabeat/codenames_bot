@@ -129,16 +129,20 @@ class GameBoard(object):
                     and self.grid[i][j] != REVEALED_CARD_TOKEN:
                 revealed_card_count += 1
         return revealed_card_count
-
-    Counts = namedtuple('Counts', ['revealed_red', 'revealed_blue',
-                                   'hidden_red', 'hidden_blue',
-                                   'revealed_white', 'hidden_white',
-                                   'black'])
+    
+    class Counts:
+        revealed_red = 0
+        revealed_blue = 0
+        hidden_red = 0
+        hidden_blue = 0
+        revealed_white = 0
+        hidden_white = 0
+        black = 0
     
     def count_all_cards(self) -> Counts:
         """return counts of cards"""
         
-        counts = GameBoard.Counts(0, 0, 0, 0, 0, 0, 0)
+        counts = GameBoard.Counts()
         for i, j in self.get_grid_indices():
             key = self.spy_key[i][j]
             revealed = self.grid[i][j] == REVEALED_CARD_TOKEN
