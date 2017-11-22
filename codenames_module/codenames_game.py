@@ -8,11 +8,10 @@ import itertools
 import math
 import json
 import os
+from collections import namedtuple
 from typing import List, Tuple, Union, Iterable
 
 import sopel.formatting as irc_format
-
-DEBUG = False
 
 MINIMUM_PLAYERS_PER_TEAM = 2
 REVEALED_CARD_TOKEN = '#####'
@@ -130,6 +129,38 @@ class GameBoard(object):
                     and self.grid[i][j] != REVEALED_CARD_TOKEN:
                 revealed_card_count += 1
         return revealed_card_count
+
+    Counts = namedtuple('Counts', ['revealed_red', 'revealed_blue',
+                                   'hidden_red', 'hidden_blue',
+                                   'revealed_white', 'hidden_white',
+                                   'black'])
+    
+    def count_all_cards(self) -> Counts:
+        """return counts of cards"""
+        
+        counts = GameBoard.Counts(0, 0, 0, 0, 0, 0, 0)
+        for i, j in self.get_grid_indices():
+            key = self.spy_key[i][j]
+            revealed = self.grid[i][j] == REVEALED_CARD_TOKEN
+            if key is CardType.red:
+                if revealed:
+                    counts.revealed_red += 1
+                else:
+                    counts.hidden_red += 1
+            elif key is CardType.blue:
+                if revealed:
+                    counts.revealed_blue += 1
+                else:
+                    counts.hidden_blue += 1
+            elif key is CardType.bystander:
+                if revealed:
+                    counts.revealed_white += 1
+                else:
+                    counts.hidden_white += 1
+            else:  # black/assassin
+                counts.black += 1
+                
+        return counts
     
     def cards_remaining(self, card_type: CardType) -> int:
         return self._cards_remaining[card_type]
@@ -163,6 +194,7 @@ class IrcCodenamesGame(object):
     def __init__(self, red_team: List[str] = None, blue_team: List[str] = None,
                  blue_spymaster: str = None, red_spymaster: str = None):
         # updated in codenames.bot.start_game()
+        self.DEBUG = False
         self.complete_original_spoiler_rows = None
         self.teams = dict()
         self.teams[Team.red] = set(red_team or [])
@@ -175,7 +207,7 @@ class IrcCodenamesGame(object):
                                           self.word_deck_fn)
         with open(word_deck_filepath) as fp:
             self.word_deck = json.load(fp)
-        self.board = None
+        self.board = None  # type: GameBoard
         self.starting_team = random.choice(list(Team))
         self.moving_team = self.starting_team
         self.winning_team = None
@@ -195,13 +227,13 @@ class IrcCodenamesGame(object):
     
     def start(self):
         """Start the game. Throw an exception if something is wrong."""
-        if not DEBUG:
+        if not self.DEBUG:
             for team in Team:
                 if len(self.teams[team]) < MINIMUM_PLAYERS_PER_TEAM:
                     raise IrcGameError(
                         '{color} team must have at least {min_amount} players.'
-                        .format(color=team.color.capitalize(),
-                                min_amount=MINIMUM_PLAYERS_PER_TEAM))
+                            .format(color=team.color.capitalize(),
+                                    min_amount=MINIMUM_PLAYERS_PER_TEAM))
                 if self.spymasters[team] is None:
                     raise IrcGameError('{color} team must have a spymaster.'
                                        .format(color=team.color.capitalize()))
