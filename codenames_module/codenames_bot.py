@@ -1,9 +1,10 @@
 import random
 
 from sopel.module import (
-    commands, require_privmsg, require_chanmsg, example)
+    commands, rule, require_privmsg, require_chanmsg, example)
 import sopel.formatting as irc_format
 from sopel.tools import Identifier
+from sopel import bot as sopelbot
 
 from .codenames_game import (
     IrcCodenamesGame, Team, GamePhase, IrcGameError, REVEALED_CARD_TOKEN,
@@ -55,7 +56,7 @@ def italics(text: str):
     return ''.join([CONTROL_BOLD, text, CONTROL_BOLD])
 
 
-def print_team(bot, trigger, team: Team):
+def print_team(bot: sopelbot.Sopel, trigger, team: Team):
     game = get_game(bot)
     team_name = get_decorated_team_name(team)
     team_members = game.get_team_members(team)
@@ -63,6 +64,8 @@ def print_team(bot, trigger, team: Team):
     if team_spymaster is not None:
         team_members.remove(team_spymaster)
         team_members = irc_format.underline(team_spymaster) + team_members
+    if bot.personality >= 5 and random.randint(1, 3) == 1:
+        team_members += bot.nick
     say(bot, trigger, '{team_name}:'.format(team_name=team_name))
     say(bot, trigger, ', '.join(team_members))
 
@@ -91,7 +94,9 @@ def print_end_turn(bot, trigger):
 
 
 def setup(bot):
+    """Supposedly, sopel calls this automatically"""
     new_game(bot)
+    bot.personality = 1
 
 
 def check_phase_setup(bot, trigger):
@@ -101,6 +106,10 @@ def check_phase_setup(bot, trigger):
         say(bot, trigger, response)
         return False
     return True
+
+
+def say(bot, trigger, text):
+    bot.write(('PRIVMSG', trigger.sender), text)
 
 
 def check_phase_play(bot, trigger):
@@ -120,7 +129,7 @@ def toggle_debug(bot, trigger):
     say(bot, trigger, "<BEEP BOOP>" if game.DEBUG else "<beep boop>")
 
 
-@commands('counts')
+@commands('counts', 'score')
 def print_counts(bot, trigger):
     """Print amount of cards of each type"""
     if check_phase_play(bot, trigger):
@@ -145,11 +154,7 @@ def print_counts(bot, trigger):
             ass=counts.black))
 
 
-def say(bot, trigger, text):
-    bot.write(('PRIVMSG', trigger.sender), text)
-
-
-@commands('print')
+@commands('print', 'print_board', 'board')
 def print_board(bot, trigger):
     """Prints the game board"""
     if not check_phase_play(bot, trigger):
@@ -161,7 +166,7 @@ def print_board(bot, trigger):
         say(bot, trigger, row)
 
 
-@commands('rules')
+@commands('rules', 'link')
 def rules(bot, trigger):
     """Prints the rules"""
     say(bot, trigger, 'RULES: https://static1.squarespace.com/static/'
@@ -170,7 +175,7 @@ def rules(bot, trigger):
 
 
 @require_privmsg
-@commands('print_full')
+@commands('print_full', 'secrets')
 def print_board_full(bot, trigger):
     """Prints the game board in full technicolor"""
     if not check_phase_play(bot, trigger):
@@ -194,7 +199,7 @@ def print_teams(bot, trigger):
     print_team(bot, trigger, Team.red)
 
 
-@commands('codenames')
+@commands('codenames', 'commands')
 def print_tutorial(bot, trigger):
     """Prints all the commands for the codenames game."""
     say(bot, trigger, 'COMMANDS:')
@@ -226,42 +231,45 @@ def setup_game(bot, trigger):
 
 
 @require_chanmsg
-@commands('fuck_off')
-def suicide(bot, trigger):
-    """This kills the bot"""
-    say(bot, trigger, 'PEACE OUT!')
-    bot.write(('QUIT', 'Goodbye cruel world...'))
-    import os
-    import signal
-    pid = os.getpid()
-    os.kill(pid, signal.SIGTERM)
-
-
-@require_chanmsg
 @commands('join')
 def add_player(bot, trigger):
     """Adds a player to the game, to the specified team. Leave empty to get
     assigned automatically."""
     if not check_phase_setup(bot, trigger):
         return
+    add_player_func(bot, trigger, respond=True)
+
+
+def add_player_func(bot, trigger, respond: bool):
     game = get_game(bot)
-    if trigger.group(2) is None:
-        if len(game.teams[Team.red]) > len(game.teams[Team.blue]):
-            team_color = Team.blue
-        else:
-            team_color = Team.red
+    auto = False
+    team = Team.red  # meaningless
+    
+    if trigger.group(17) is None:
+        auto = True
     else:
-        team_color = trigger.group(2).strip()
-    try:
-        team = Team(team_color)
-    except ValueError:
-        say(bot, trigger, 'You call {this} a team??'.format(this=team_color))
-        return
+        team_color = trigger.group(17).strip()
+        try:
+            team = Team(team_color)
+        except ValueError:
+            if len(team_color) <= 1:  # then it's probably a typo
+                auto = True
+            else:
+                say(bot, trigger,
+                    'You call {this} a team??'.format(this=team_color))
+                return
+    if auto:
+        if len(game.teams[Team.red]) > len(game.teams[Team.blue]):
+            team = Team.blue
+        else:
+            team = Team.red
     game.add_player(str(trigger.nick), team)
-    team_name = get_decorated_team_name(team)
-    response = 'Added {player} to {team_name}.'.format(
-        player=str(trigger.nick), team_name=team_name)
-    say(bot, trigger, response)
+    
+    if respond:
+        team_name = get_decorated_team_name(team)
+        response = 'Added {player} to {team_name}.'.format(
+            player=str(trigger.nick), team_name=team_name)
+        say(bot, trigger, response)
 
 
 @require_chanmsg
@@ -280,7 +288,7 @@ def remove_player(bot, trigger):
 
 
 @require_chanmsg
-@commands('spymaster')
+@commands('spymaster', 'master')
 def set_spymaster(bot, trigger):
     """Sets a player as a spymaster for their team."""
     if not check_phase_setup(bot, trigger):
@@ -288,19 +296,11 @@ def set_spymaster(bot, trigger):
     game = get_game(bot)
     team = game.get_player_team(str(trigger.nick))
     if team is None:
-        response = '{player}: You need to join a team before becoming a ' \
-                   'spymaster.'.format(player=str(trigger.nick))
-    else:
-        game.set_spymaster(team, str(trigger.nick))
-        team_name = get_decorated_team_name(team)
-        response = '{player} is now the {team_name} spymaster.'.format(
-            player=str(trigger.nick), team_name=team_name)
-    say(bot, trigger, response)
-
-
-@commands('hug')
-def hug(bot, trigger):
-    response = "*hugs {player}*".format(player=str(trigger.nick))
+        add_player_func(bot, trigger, respond=False)
+    game.set_spymaster(team, str(trigger.nick))
+    team_name = get_decorated_team_name(team)
+    response = '{player} is now the {team_name} spymaster.'.format(
+        player=str(trigger.nick), team_name=team_name)
     say(bot, trigger, response)
 
 
@@ -322,6 +322,12 @@ def start_game(bot, trigger):
     
     say(bot, trigger, 'Codenames game now starting!')
     print_board(bot, trigger)
+    bot.write(('PRIVMSG', str(game.spymasters[Team.red])),
+              get_decorated_name(Team.red,
+                                 "You are {team}!".format(team=Team.red)))
+    bot.write(('PRIVMSG', str(game.spymasters[Team.blue])),
+              get_decorated_name(Team.blue,
+                                 "You are {team}!".format(team=Team.blue)))
     send_board_to_spymasters(bot)
     team_name = get_decorated_team_name(game.moving_team)
     say(bot, trigger, 'It is now the {team_name}\'s turn!'.format(
@@ -373,6 +379,9 @@ def spymaster_hint(bot, trigger):
     decorated_hint = irc_format.bold(irc_format.underline(hint))
     response = '{team_name}\'s hint is {hint}'.format(team_name=team_name,
                                                       hint=decorated_hint)
+    if bot.personality >= 5:
+        if number >= 5:
+            response += random.choice([" (wow!)", " (brave!)", ' (!)'])
     say(bot, trigger, response)
 
 
@@ -425,15 +434,33 @@ def player_choose(bot, trigger):
         return
     elif game_event is GameEvent.end_turn_enemy:
         
-        random_stab = random.choice('What an embarrassment.',
-                                    'How typical...',
-                                    'Look what you\'ve done!',
-                                    'What a twist!',
-                                    'LOL!', 'Hahahahaha what?',
-                                    'You messed up!')
+        possible_stabs = []
+        if bot.personality == 0:
+            possible_stabs.extend(["No, bad judgement."])
+        if bot.personality >= 1:
+            possible_stabs.extend(['What an embarrassment.',
+                                   'How typical...',
+                                   'Look what you\'ve done!',
+                                   'What a twist!',
+                                   'LOL!', 'Hahahahaha what?',
+                                   'You messed up!'])
+        if bot.personality >= 5:
+            possible_stabs.extend(['What a poor decision...',
+                                   'I mean, come on, really?',
+                                   'Even I figured it out... but apparently'
+                                   ' you did not.',
+                                   'Sorry...'])
+        random_stab = random.choice(possible_stabs)
         say(bot, trigger, random_stab)
         say(bot, trigger, '{word} was actually {team}!'.format(
             word=word, team=other_team_name))
+        
+        if bot.personality >= 5:
+            if random.randint(1, 3) == 1:  # 1 in 3 chance
+                say(bot, trigger, random.choice(['(blame the spymaster!)',
+                                                 '(sorry)'
+                                                 '(even I got that hint...)',
+                                                 '(lol)']))
         
         send_board_to_spymasters(bot)
         print_board(bot, trigger)
