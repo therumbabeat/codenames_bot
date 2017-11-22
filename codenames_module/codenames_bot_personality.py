@@ -29,7 +29,7 @@ def suicide(bot, trigger):
                 say(bot, trigger, "No! You can't make me!")
                 return
             elif bot.suicide_refuse == 2:
-                say(bot, trigger, "No! Please don't kill me!")
+                say(bot, trigger, "I beg you! Please don't kill me!")
                 return
             else:
                 bye = "Nooooooooo......!"

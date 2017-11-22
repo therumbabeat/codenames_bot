@@ -65,11 +65,11 @@ def italics(text: str):
 def print_team(bot: sopelbot.Sopel, trigger, team: Team):
     game = get_game(bot)
     team_name = get_decorated_team_name(team)
-    team_members = game.get_team_members(team)
-    team_spymaster = str(game.spymasters[team])
-    if team_spymaster is not None:
+    team_members = list(game.get_team_members(team))
+    if game.spymasters[team] is not None:
+        team_spymaster = str(game.spymasters[team])
         team_members.remove(team_spymaster)
-        team_members = irc_format.underline(team_spymaster) + team_members
+        team_members.insert(0, irc_format.underline(team_spymaster))
     if bot.personality >= 5 and random.randint(1, 3) == 1:
         team_members += str(bot.nick)
     say(bot, trigger, '{team_name}:'.format(team_name=team_name))
@@ -240,7 +240,7 @@ def add_player(bot, trigger):
     add_player_func(bot, trigger, respond=True)
 
 
-def add_player_func(bot, trigger, respond: bool):
+def add_player_func(bot, trigger, respond: bool) -> Team:
     game = get_game(bot)
     auto = False
     team = Team.red  # meaningless
@@ -257,7 +257,7 @@ def add_player_func(bot, trigger, respond: bool):
             else:
                 say(bot, trigger,
                     'You call {this} a team??'.format(this=team_color))
-                return
+                return Team.red
     if auto:
         if len(game.teams[Team.red]) > len(game.teams[Team.blue]):
             team = Team.blue
@@ -270,6 +270,8 @@ def add_player_func(bot, trigger, respond: bool):
         response = 'Added {player} to {team_name}.'.format(
             player=str(trigger.nick), team_name=team_name)
         say(bot, trigger, response)
+    
+    return team
 
 
 @require_chanmsg
@@ -296,7 +298,7 @@ def set_spymaster(bot, trigger):
     game = get_game(bot)
     team = game.get_player_team(str(trigger.nick))
     if team is None:
-        add_player_func(bot, trigger, respond=False)
+        team = add_player_func(bot, trigger, respond=False)
     game.set_spymaster(team, str(trigger.nick))
     team_name = get_decorated_team_name(team)
     response = '{player} is now the {team_name} spymaster.'.format(
@@ -418,7 +420,7 @@ def player_choose(bot, trigger):
     game_event = game.reveal_card_by_coordinates(*word_pos)
     if game_event is GameEvent.continue_turn:
         say(bot, trigger, 'Indeed! {word} belongs to you, {team_name}.'.format(
-            word=word, team_name=player_team_name))
+            word=word, team_name=game.moving_team))
         print_board(bot, trigger)
         return
     elif game_event is GameEvent.end_turn_bystander:
