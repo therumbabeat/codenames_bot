@@ -11,7 +11,7 @@ from .codenames_game import (
     GameEvent)
 
 from .codenames_bot import (
-say, get_arguments
+    say, get_arguments
 )
 
 
@@ -54,9 +54,9 @@ def hug(bot, trigger):
     if bot.personality == 0:
         return
     if bot.personality >= 2:
-        response = random.choice("*shies away*", "*hugs back*",
-                                 "*hugs {player} tightly*"
-                                 .format(player=str(trigger.nick)))
+        response = random.choice(["*shies away*", "*hugs back*",
+                                  "*hugs {player} tightly*"
+                                 .format(player=str(trigger.nick))])
     else:
         response = "*hugs {player}*".format(player=str(trigger.nick))
     say(bot, trigger, response)
@@ -71,8 +71,8 @@ def good_bot(bot, trigger):
     elif bot.personality <= 4:
         response = "Good human!"
     else:
-        response = random.choice("Not...good...enough!",
-                                 "Best bot!", "\♥/")
+        response = random.choice(["Not...good...enough!",
+                                  "Best bot!", "\♥/"])
     
     say(bot, trigger, response)
 
@@ -94,7 +94,7 @@ def set_personality(bot, trigger):
             say(bot, trigger, 'I am sorry, this is not one of my'
                               ' predefined personalities.')
             return
-        bot.personality = 5
+        bot.personality = n
     except ValueError:
         if arg == 'rock':
             bot.personality = 0
@@ -114,5 +114,3 @@ def set_personality(bot, trigger):
             return
     
     say(bot, trigger, '<Bzzt!>')
-
-

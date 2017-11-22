@@ -15,6 +15,12 @@ COLUMN_WIDTH = 12
 CONTROL_BOLD = '\x1d'
 
 
+def setup(bot):
+    """Supposedly, sopel calls this automatically"""
+    new_game(bot)
+    bot.personality = 1
+
+
 def get_game(bot) -> IrcCodenamesGame:
     return bot.memory[BOT_MEMORY_KEY]
 
@@ -60,12 +66,12 @@ def print_team(bot: sopelbot.Sopel, trigger, team: Team):
     game = get_game(bot)
     team_name = get_decorated_team_name(team)
     team_members = game.get_team_members(team)
-    team_spymaster = game.spymasters[team]
+    team_spymaster = str(game.spymasters[team])
     if team_spymaster is not None:
         team_members.remove(team_spymaster)
         team_members = irc_format.underline(team_spymaster) + team_members
     if bot.personality >= 5 and random.randint(1, 3) == 1:
-        team_members += bot.nick
+        team_members += str(bot.nick)
     say(bot, trigger, '{team_name}:'.format(team_name=team_name))
     say(bot, trigger, ', '.join(team_members))
 
@@ -91,12 +97,6 @@ def print_end_turn(bot, trigger):
         '{spymaster_enemy}, make your move!'.format(
             moving_team_name=moving_team_name,
             spymaster_enemy=spymaster_enemy))
-
-
-def setup(bot):
-    """Supposedly, sopel calls this automatically"""
-    new_game(bot)
-    bot.personality = 1
 
 
 def check_phase_setup(bot, trigger):
@@ -245,10 +245,10 @@ def add_player_func(bot, trigger, respond: bool):
     auto = False
     team = Team.red  # meaningless
     
-    if trigger.group(17) is None:
+    if trigger.group(2) is None:
         auto = True
     else:
-        team_color = trigger.group(17).strip()
+        team_color = trigger.group(2).strip()
         try:
             team = Team(team_color)
         except ValueError:
@@ -399,7 +399,7 @@ def player_choose(bot, trigger):
         return
     
     # Check if the player is the spymaster
-    if not game.DEBUG and str(trigger.nick) == game.spymasters[player_team]:
+    if (not game.DEBUG) and str(trigger.nick) == game.spymasters[player_team]:
         bot.say('Spymasters aren\'t allowed to touch cards.', trigger.nick)
     
     player_team_name = get_decorated_team_name(player_team)

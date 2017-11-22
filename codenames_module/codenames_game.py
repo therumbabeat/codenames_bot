@@ -142,7 +142,7 @@ class GameBoard(object):
     def count_all_cards(self) -> Counts:
         """return counts of cards"""
         
-        counts = GameBoard.Counts()
+        counts = GameBoardCounts()
         for i, j in self.get_grid_indices():
             key = self.spy_key[i][j]
             revealed = self.grid[i][j] == REVEALED_CARD_TOKEN
