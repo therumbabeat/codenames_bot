@@ -117,7 +117,7 @@ def toggle_debug(bot, trigger):
     """>Debug mode<"""
     game = get_game(bot)
     game.DEBUG = not game.DEBUG
-    say(bot, trigger, "<beep boop>" if game.DEBUG else "<BEEP BOOP>")
+    say(bot, trigger, "<BEEP BOOP>" if game.DEBUG else "<beep boop>")
 
 
 @commands('counts')
