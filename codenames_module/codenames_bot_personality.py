@@ -1,14 +1,7 @@
 import random
 
 from sopel.module import (
-    commands, rule, require_privmsg, require_chanmsg, example)
-import sopel.formatting as irc_format
-from sopel.tools import Identifier
-from sopel import bot as sopelbot
-
-from .codenames_game import (
-    IrcCodenamesGame, Team, GamePhase, IrcGameError, REVEALED_CARD_TOKEN,
-    GameEvent)
+    commands, rule, require_chanmsg, example)
 
 from .codenames_bot import (
     say, get_arguments
@@ -29,13 +22,13 @@ def suicide(bot, trigger):
         elif bot.personality == 4:
             bye = 'Sayonara!'
         else:
-            if not bot.hasattr('suicide_refuse'):
+            if not hasattr(bot, 'suicide_refuse'):
                 bot.suicide_refuse = 0
             bot.suicide_refuse += 1
-            if bot.suicide.refuse == 1:
+            if bot.suicide_refuse == 1:
                 say(bot, trigger, "No! You can't make me!")
                 return
-            elif bot.suicide.refuse == 2:
+            elif bot.suicide_refuse == 2:
                 say(bot, trigger, "No! Please don't kill me!")
                 return
             else:
