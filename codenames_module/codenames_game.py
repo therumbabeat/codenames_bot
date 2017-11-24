@@ -129,7 +129,7 @@ class GameBoard(object):
                     and self.grid[i][j] != REVEALED_CARD_TOKEN:
                 revealed_card_count += 1
         return revealed_card_count
-    
+
     class Counts:
         revealed_red = 0
         revealed_blue = 0
@@ -138,10 +138,10 @@ class GameBoard(object):
         revealed_white = 0
         hidden_white = 0
         black = 0
-    
+
     def count_all_cards(self) -> Counts:
         """return counts of cards"""
-        
+
         counts = GameBoardCounts()
         for i, j in self.get_grid_indices():
             key = self.spy_key[i][j]
@@ -163,9 +163,9 @@ class GameBoard(object):
                     counts.hidden_white += 1
             else:  # black/assassin
                 counts.black += 1
-                
+
         return counts
-    
+
     def cards_remaining(self, card_type: CardType) -> int:
         return self._cards_remaining[card_type]
 
@@ -196,7 +196,7 @@ class IrcCodenamesGame(object):
     board_column_width = 15
 
     def __init__(self, red_team: List[str] = None, blue_team: List[str] = None,
-                 blue_spymaster: str = None, red_spymaster: str = None):
+                 red_spymaster: str = None, blue_spymaster: str = None):
         # updated in codenames.bot.start_game()
         self.DEBUG = False
         self.complete_original_spoiler_rows = None
@@ -211,7 +211,7 @@ class IrcCodenamesGame(object):
                                           self.word_deck_fn)
         with open(word_deck_filepath) as fp:
             self.word_deck = json.load(fp)
-        self.board = None  # type: GameBoard
+        self.board: GameBoard = None
         self.starting_team = random.choice(list(Team))
         self.moving_team = self.starting_team
         self.winning_team = None
@@ -221,9 +221,9 @@ class IrcCodenamesGame(object):
     def generate_spy_key(starting_team: Team) -> List[List[CardType]]:
         """Generate a random spy key."""
         cards = [starting_team.card_type()] * (TEAM_CARD_COUNT + 1) \
-                + [starting_team.other().card_type()] * TEAM_CARD_COUNT \
-                + [CardType.bystander] * BYSTANDER_CARD_COUNT \
-                + [CardType.assassin] * ASSASSIN_CARD_COUNT
+            + [starting_team.other().card_type()] * TEAM_CARD_COUNT \
+            + [CardType.bystander] * BYSTANDER_CARD_COUNT \
+            + [CardType.assassin] * ASSASSIN_CARD_COUNT
         random.shuffle(cards)
         spy_key = [cards[i:i + BOARD_SIZE]
                    for i in range(0, BOARD_SIZE * BOARD_SIZE, BOARD_SIZE)]
@@ -284,6 +284,9 @@ class IrcCodenamesGame(object):
                              .format(color=team.color))
         self.spymasters[team] = player
 
+    def get_spymaster(self, team: Team) -> str:
+        return self.spymasters[team]
+
     def get_player_team(self, player: str) -> Union[Team, None]:
         for team in Team:
             if player in self.teams[team]:
@@ -316,6 +319,10 @@ class IrcCodenamesGame(object):
             elif revealed_card_team is not self.moving_team:
                 return GameEvent.end_turn_enemy
         return GameEvent.continue_turn
+
+    def reveal_card(self, word: str) -> GameEvent:
+        word_coordinates = self.board.get_word_position(word)
+        return self.reveal_card_by_coordinates(*word_coordinates)
 
     def next_turn(self):
         self.moving_team = self.moving_team.other()
