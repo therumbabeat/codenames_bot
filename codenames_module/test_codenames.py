@@ -2,11 +2,18 @@ import pytest
 import random
 import os
 import json
-from typing import List, Tuple, Dict
+from typing import List, Dict, Callable
+
+import sopel.tools
+import sopel.trigger
+from sopel.test_tools import (MockSopel, MockSopelWrapper)
 
 from .codenames_game import (
     Team, CardType, GameBoard, GamePhase, GameEvent, IrcCodenamesGame,
     TEAM_CARD_COUNT, BYSTANDER_CARD_COUNT, ASSASSIN_CARD_COUNT)
+from .codenames_bot import (
+    setup, rules
+)
 
 random.seed(0)
 
@@ -170,6 +177,59 @@ class TestCodenamesGame:
         assert event is GameEvent.end_game
 
 
+class MockBot(MockSopel):
+
+    def __init__(self, nick, admin=False, owner=False):
+        super().__init__(nick, admin, owner)
+        self.config.parser.set('core', 'prefix', '!')
+        self.prefix: str = self.config.core.prefix
+
+    def send_message(self, msg: str, func: Callable, privmsg: bool = False,
+                     single_output: bool = True) -> List[str]:
+        """Send message to the bot with the intent of triggering the provided
+        callable."""
+        match = None
+        if hasattr(func, 'commands'):
+            for command in func.commands:
+                regexp = sopel.tools.get_command_regexp(self.prefix, command)
+                match = regexp.match(msg)
+                if match:
+                    break
+        assert match, 'Function did not match any command.'
+
+        sender = self.nick if privmsg else "#channel"
+        hostmask = "%s!%s@%s " % (self.nick, "UserName", "example.com")
+        full_message = ':{} PRIVMSG {} :{}'.format(hostmask, sender, msg)
+
+        pretrigger = sopel.trigger.PreTrigger(self.nick, full_message)
+        trigger = sopel.trigger.Trigger(self.config, pretrigger, match)
+        wrapper = MockWriteWrapper(self, trigger)
+        func(wrapper, trigger)
+        if single_output:
+            assert len(wrapper.output) == 1, 'Command returned multiple lines.'
+        return wrapper.output
+
+
+class MockWriteWrapper(MockSopelWrapper):
+    """We use bot.write instead of bot.say, and MockSopelWrapper doesn't
+    override the write method, so we do it ourselves here."""
+    def write(self, args, text=None):
+        self.say(text)
+
+
+class TestBot:
+
+    @pytest.fixture
+    def bot(self) -> MockBot:
+        bot = MockBot(nick='Testuvorov')
+        setup(bot)
+        return bot
+
+    def test_rules(self, bot: MockBot):
+        output = bot.send_message('!rules', rules)
+        assert output[0] == 'RULES: https://static1.squarespace.com/static/' \
+                            '54da1198e4b0e9d26e55b0fc/t/5646752be4b0c85596a66'\
+                            'ac7/1447458091793/codenames-rules-en.pdf'
 
 
 
