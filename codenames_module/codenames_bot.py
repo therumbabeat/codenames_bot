@@ -10,9 +10,9 @@ from .codenames_game import (
     IrcCodenamesGame, Team, GamePhase, IrcGameError, REVEALED_CARD_TOKEN,
     GameEvent)
 
-BOT_MEMORY_KEY = 'codenames_game'
-COLUMN_WIDTH = 12
-CONTROL_BOLD = '\x1d'
+BOT_MEMORY_KEY: str = 'codenames_game'
+COLUMN_WIDTH: int = 12
+CONTROL_BOLD: str = '\x1d'
 
 
 def setup(bot):
@@ -134,9 +134,9 @@ def print_counts(bot, trigger):
     """Print amount of cards of each type"""
     if check_phase_play(bot, trigger):
         game = get_game(bot)
-        
+
         counts = game.board.count_all_cards()
-        
+
         say(bot, trigger, irc_format.underline("CURRENT SCORE"))
         say(bot, trigger, "Team {team}: {flp} cards revealed, "
                           "{rem} cards remaining.".format(
@@ -244,7 +244,7 @@ def add_player_func(bot, trigger, respond: bool) -> Team:
     game = get_game(bot)
     auto = False
     team = Team.red  # meaningless
-    
+
     if trigger.group(2) is None:
         auto = True
     else:
@@ -264,13 +264,13 @@ def add_player_func(bot, trigger, respond: bool) -> Team:
         else:
             team = Team.red
     game.add_player(str(trigger.nick), team)
-    
+
     if respond:
         team_name = get_decorated_team_name(team)
         response = 'Added {player} to {team_name}.'.format(
             player=str(trigger.nick), team_name=team_name)
         say(bot, trigger, response)
-    
+
     return team
 
 
@@ -318,10 +318,10 @@ def start_game(bot, trigger):
     except IrcGameError as err:
         say(bot, trigger, str(err))
         return
-    
+
     game.complete_original_spoiler_rows = game.render_board_rows(
         column_width=COLUMN_WIDTH, spoil_colors=True)
-    
+
     say(bot, trigger, 'Codenames game now starting!')
     print_board(bot, trigger)
     bot.write(('PRIVMSG', str(game.spymasters[Team.red])),
@@ -342,20 +342,20 @@ def start_game(bot, trigger):
 def spymaster_hint(bot, trigger):
     if not check_phase_play(bot, trigger):
         return
-    
+
     game = get_game(bot)
     player_team = game.get_player_team(str(trigger.nick))
     if player_team is not game.moving_team:
         return
-    
+
     if str(trigger.nick) != game.spymasters[player_team]:
         return
-    
+
     args = get_arguments(trigger)
     if len(args) < 2:
         say(bot, trigger, 'This command requires at least two arguments.')
         return
-    
+
     words = ' '.join(args[:-1])
     number = args[-1]
     error_msg = 'The second argument must either be a number ' \
@@ -375,7 +375,7 @@ def spymaster_hint(bot, trigger):
         else:
             say(bot, trigger, error_msg)
             return
-    
+
     team_name = get_decorated_team_name(player_team)
     hint = '{words} {number}'.format(words=words.upper(), number=number)
     decorated_hint = irc_format.bold(irc_format.underline(hint))
@@ -394,16 +394,16 @@ def player_choose(bot, trigger):
     if not check_phase_play(bot, trigger):
         return
     game = get_game(bot)
-    
+
     # Check if the player is on the currently moving team
     player_team = game.get_player_team(str(trigger.nick))
     if not game.DEBUG and player_team is not game.moving_team:
         return
-    
+
     # Check if the player is the spymaster
     if (not game.DEBUG) and str(trigger.nick) == game.spymasters[player_team]:
         bot.say('Spymasters aren\'t allowed to touch cards.', trigger.nick)
-    
+
     player_team_name = get_decorated_team_name(player_team)
     other_team_name = get_decorated_team_name(player_team.other())
     word = trigger.groups(17)[2].strip().upper()  # first argument, default 17
@@ -424,18 +424,18 @@ def player_choose(bot, trigger):
         print_board(bot, trigger)
         return
     elif game_event is GameEvent.end_turn_bystander:
-        
+
         say(bot, trigger, 'Nope!')
         say(bot, trigger, '{word} was actually {team}.'.format(
             word=word, team=white_bold("WHITE")))
-        
+
         send_board_to_spymasters(bot)
         print_board(bot, trigger)
         print_end_turn(bot, trigger)
         game.next_turn()
         return
     elif game_event is GameEvent.end_turn_enemy:
-        
+
         possible_stabs = []
         if bot.personality == 0:
             possible_stabs.extend(["No, bad judgement."])
@@ -456,14 +456,14 @@ def player_choose(bot, trigger):
         say(bot, trigger, random_stab)
         say(bot, trigger, '{word} was actually {team}!'.format(
             word=word, team=other_team_name))
-        
+
         if bot.personality >= 5:
             if random.randint(1, 3) == 1:  # 1 in 3 chance
                 say(bot, trigger, random.choice(['(blame the spymaster!)',
                                                  '(sorry)'
                                                  '(even I got that hint...)',
                                                  '(lol)']))
-        
+
         send_board_to_spymasters(bot)
         print_board(bot, trigger)
         print_end_turn(bot, trigger)
@@ -484,11 +484,11 @@ def player_choose(bot, trigger):
                 winning_team_name=winning_team_name
             )
         say(bot, trigger, response)
-        
+
         rows = game.complete_original_spoiler_rows
         for row in rows:
             say(bot, trigger, row)
-        
+
         return
     else:
         say(bot, trigger, 'you found a bug! this event does not compute: '
@@ -503,12 +503,12 @@ def team_pass(bot, trigger):
     if not check_phase_play(bot, trigger):
         return
     game = get_game(bot)
-    
+
     # Check if the player is on the currently moving team
     player_team = game.get_player_team(str(trigger.nick))
     if not game.DEBUG and player_team is not game.moving_team:
         return
-    
+
     print_end_turn(bot, trigger)
     game.next_turn()
 
@@ -530,7 +530,7 @@ def rotate_game(bot, trigger):
     game = get_game(bot)
     game.reset()
     say(bot, trigger, 'REMIXING TEAMS')
-    
+
     players = list()
     players.extend(game.teams[Team.red])
     players.extend(game.teams[Team.blue])
@@ -540,7 +540,7 @@ def rotate_game(bot, trigger):
     game.teams[Team.blue] = set(players[middle:])
     game.spymasters[Team.red] = players[0]
     game.spymasters[Team.blue] = players[middle]
-    
+
     start_game(bot, trigger)
 
 
@@ -551,11 +551,11 @@ def finish_game(bot, trigger):
     game = get_game(bot)
     say(bot, trigger, 'You have decided to abruptly conclude the game. '
                       'The original board was:')
-    
+
     rows = game.complete_original_spoiler_rows
     for row in rows:
         say(bot, trigger, row)
-    
+
     game.reset()
 
 
@@ -568,27 +568,27 @@ def rename_player(bot, trigger):
     if not len(args) == 2:
         say(bot, trigger, 'This command requires exactly two arguments.')
         return
-    
+
     removed_player = args[0]
     added_player = args[1]
-    
+
     player_team = game.get_player_team(removed_player)
     if player_team is None:
         say(bot, trigger, '{removed_player} is not participating in the '
                           'game.'.format(removed_player=removed_player))
         return
-    
+
     if game.get_player_team(added_player) is not None:
         say(bot, trigger, '{added_player} is already participating in the '
                           'game.'.format(added_player=added_player))
         return
-    
+
     channel_users = bot.channels[trigger.sender].users
     if Identifier(added_player) not in channel_users:
         say(bot, trigger, '{added_player} is not in this channel.'.format(
             added_player=added_player))
         return
-    
+
     game.remove_player(removed_player)
     game.add_player(added_player, player_team)
     team_name = get_decorated_team_name(player_team)

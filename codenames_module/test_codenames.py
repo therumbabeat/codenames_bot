@@ -230,6 +230,3 @@ class TestBot:
         assert output[0] == 'RULES: https://static1.squarespace.com/static/' \
                             '54da1198e4b0e9d26e55b0fc/t/5646752be4b0c85596a66'\
                             'ac7/1447458091793/codenames-rules-en.pdf'
-
-
-

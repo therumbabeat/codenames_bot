@@ -9,16 +9,17 @@ import math
 import json
 import os
 from collections import namedtuple
-from typing import List, Tuple, Union, Iterable
+from typing import (
+    List, Tuple, Union, Iterable, Dict, Set)
 
 import sopel.formatting as irc_format
 
-MINIMUM_PLAYERS_PER_TEAM = 2
-REVEALED_CARD_TOKEN = '#####'
-BOARD_SIZE = 5
-TEAM_CARD_COUNT = 8
-BYSTANDER_CARD_COUNT = 7
-ASSASSIN_CARD_COUNT = 1
+MINIMUM_PLAYERS_PER_TEAM: int = 2
+REVEALED_CARD_TOKEN: str = '#####'
+BOARD_SIZE: int = 5
+TEAM_CARD_COUNT: int = 8
+BYSTANDER_CARD_COUNT: int = 7
+ASSASSIN_CARD_COUNT: int = 1
 
 
 class CardType(enum.Enum):
@@ -27,7 +28,7 @@ class CardType(enum.Enum):
     bystander = 'bystander'
     assassin = 'assassin'
 
-    def team(self):
+    def team(self) -> 'Team':
         return Team(self.value)
 
 
@@ -35,19 +36,19 @@ class Team(enum.Enum):
     red = 'red'
     blue = 'blue'
 
-    def other(self):
+    def other(self) -> 'Team':
         """The other team, useful when switching turns."""
         if self is Team.red:
             return Team.blue
         else:
             return Team.red
 
-    def card_type(self):
+    def card_type(self) -> CardType:
         """Card type for this team"""
         return CardType(self.color)
 
     @property
-    def color(self):
+    def color(self) -> str:
         return self.value
 
 
@@ -65,6 +66,12 @@ class GamePhase(enum.Enum):
     finished = enum.auto()
 
 
+# Some type definitions for more compact annotations
+WordDeck = List[str]
+SpyKey = List[List[CardType]]
+Grid = List[List[str]]
+
+
 class GameBoard(object):
     """The game board. Takes care of the mechanics of revealing cards and
     checking win conditions.
@@ -72,14 +79,15 @@ class GameBoard(object):
 
     def __init__(self, word_deck: List[str], spy_key: List[List[CardType]]):
         self.validate_deck(word_deck)
-        self.word_deck = word_deck
-        self.spy_key = spy_key
-        self.grid = self.generate_grid(self.word_deck)
-        self._cards_remaining = {card_type: self.count_revealed_cards(
-            card_type) for card_type in CardType}
+        self.word_deck: WordDeck = word_deck
+        self.spy_key: SpyKey = spy_key
+        self.grid: Grid = self.generate_grid(self.word_deck)
+        self._cards_remaining: Dict[CardType, int] = {
+            card_type: self.count_revealed_cards(card_type)
+            for card_type in CardType}
 
     @staticmethod
-    def generate_grid(word_deck: List[str]) -> List[List[str]]:
+    def generate_grid(word_deck: WordDeck) -> Grid:
         word_sample = random.sample(word_deck, BOARD_SIZE * BOARD_SIZE)
         board_words = list(map(str.upper, word_sample))
         grid = [board_words[i:i + BOARD_SIZE]
@@ -87,17 +95,17 @@ class GameBoard(object):
         return grid
 
     @staticmethod
-    def validate_deck(word_deck: List[str]):
+    def validate_deck(word_deck: WordDeck):
         """Check if the deck is valid. Currently this just checks whether
         it contains any duplicates and removes non-words."""
         if len(word_deck) != len(set(word_deck)):
             raise ValueError('Deck must be composed of unique words.')
-        goodwords = []
+        good_words = []
         for word in word_deck:
             if " " in word:
                 print("Illegal word was removed:    " + word)
             else:
-                goodwords.append(word)
+                good_words.append(word)
 
     def reveal_card_by_coordinates(self, i: int, j: int) -> CardType:
         if self.is_revealed(i, j):
@@ -115,7 +123,7 @@ class GameBoard(object):
             i, j = pos
         return self.reveal_card_by_coordinates(i, j)
 
-    def is_revealed(self, i: int, j: int):
+    def is_revealed(self, i: int, j: int) -> bool:
         return self.grid[i][j] == REVEALED_CARD_TOKEN
 
     def team_won(self, team: Team) -> bool:
@@ -142,7 +150,7 @@ class GameBoard(object):
     def count_all_cards(self) -> Counts:
         """return counts of cards"""
 
-        counts = GameBoardCounts()
+        counts = GameBoard.Counts()
         for i, j in self.get_grid_indices():
             key = self.spy_key[i][j]
             revealed = self.grid[i][j] == REVEALED_CARD_TOKEN
@@ -198,27 +206,30 @@ class IrcCodenamesGame(object):
     def __init__(self, red_team: List[str] = None, blue_team: List[str] = None,
                  red_spymaster: str = None, blue_spymaster: str = None):
         # updated in codenames.bot.start_game()
-        self.DEBUG = False
-        self.complete_original_spoiler_rows = None
-        self.teams = dict()
+        # TODO: maybe just move this into bot memory instead?
+        self.complete_original_spoiler_rows: List[str] = None
+        self.DEBUG: bool = False
+        self.teams: Dict[Team, Set[str]] = dict()
         self.teams[Team.red] = set(red_team or [])
         self.teams[Team.blue] = set(blue_team or [])
-        self.players = self.teams[Team.red].union(self.teams[Team.blue])
-        self.spymasters = dict()
+
+        self.spymasters: Dict[Team, str] = dict()
         self.spymasters[Team.red] = red_spymaster
         self.spymasters[Team.blue] = blue_spymaster
+
         word_deck_filepath = os.path.join(self.word_deck_dirpath,
                                           self.word_deck_fn)
         with open(word_deck_filepath) as fp:
-            self.word_deck = json.load(fp)
+            self.word_deck: WordDeck = json.load(fp)
+
         self.board: GameBoard = None
-        self.starting_team = random.choice(list(Team))
-        self.moving_team = self.starting_team
-        self.winning_team = None
-        self.phase = GamePhase.setup
+        self.starting_team: Team = random.choice(list(Team))
+        self.moving_team: Team = self.starting_team
+        self.winning_team: Team = None
+        self.phase: GamePhase = GamePhase.setup
 
     @staticmethod
-    def generate_spy_key(starting_team: Team) -> List[List[CardType]]:
+    def generate_spy_key(starting_team: Team) -> SpyKey:
         """Generate a random spy key."""
         cards = [starting_team.card_type()] * (TEAM_CARD_COUNT + 1) \
             + [starting_team.other().card_type()] * TEAM_CARD_COUNT \
@@ -267,8 +278,6 @@ class IrcCodenamesGame(object):
         self.teams[team].add(player)
 
     def remove_player(self, player: str) -> Union[Team, None]:
-        if player in self.players:
-            self.players.remove(player)
         for team in Team:
             if player in self.teams[team]:
                 self.teams[team].remove(player)
@@ -276,6 +285,9 @@ class IrcCodenamesGame(object):
                     self.spymasters[team] = None
                 return team
         return None
+
+    def players(self) -> Set[str]:
+        return self.teams[Team.red].union(self.teams[Team.blue])
 
     def set_spymaster(self, team: Team, player: str):
         if player not in self.teams[team]:
@@ -293,7 +305,7 @@ class IrcCodenamesGame(object):
                 return team
         return None
 
-    def get_team_members(self, team: Team) -> List[str]:
+    def get_team_members(self, team: Team) -> Set[str]:
         return self.teams[team]
 
     def team_won(self, team: Team) -> bool:
@@ -321,8 +333,8 @@ class IrcCodenamesGame(object):
         return GameEvent.continue_turn
 
     def reveal_card(self, word: str) -> GameEvent:
-        word_coordinates = self.board.get_word_position(word)
-        return self.reveal_card_by_coordinates(*word_coordinates)
+        i, j = self.board.get_word_position(word)
+        return self.reveal_card_by_coordinates(i, j)
 
     def next_turn(self):
         self.moving_team = self.moving_team.other()
@@ -386,9 +398,9 @@ class IrcCodenamesGame(object):
 
         rendered_rows = []
         for i in range(BOARD_SIZE):
-            card_types = self.board.spy_key[i]
+            row_card_types = self.board.spy_key[i]
             rendered_row = render_row(self.board.grid[i],
-                                      column_width, card_types)
+                                      column_width, row_card_types)
             rendered_rows.append(rendered_row)
         return rendered_rows
 
