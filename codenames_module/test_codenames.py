@@ -2,17 +2,20 @@ import pytest
 import random
 import os
 import json
-from typing import List, Dict, Callable
+import re
+from typing import List, Dict, Callable, Union
 
 import sopel.tools
 import sopel.trigger
 from sopel.test_tools import (MockSopel, MockSopelWrapper)
+from sopel.formatting import (CONTROL_BOLD, CONTROL_COLOR, CONTROL_NORMAL,
+                              CONTROL_UNDERLINE)
 
 from .codenames_game import (
     Team, CardType, GameBoard, GamePhase, GameEvent, IrcCodenamesGame,
-    TEAM_CARD_COUNT, BYSTANDER_CARD_COUNT, ASSASSIN_CARD_COUNT)
+    TEAM_CARD_COUNT, BYSTANDER_CARD_COUNT, ASSASSIN_CARD_COUNT, BOARD_SIZE)
 from .codenames_bot import (
-    setup, rules
+    get_game, setup, rules, setup_game, add_player
 )
 
 random.seed(0)
@@ -176,6 +179,16 @@ class TestCodenamesGame:
         event = game.reveal_card(assassin_word)
         assert event is GameEvent.end_game
 
+    def test_render_board(self, game: IrcCodenamesGame):
+        """Only check if the general shape of the output is correct."""
+        game.start()
+        rows = game.render_board_rows()
+        assert len(rows) == BOARD_SIZE
+        for i in range(BOARD_SIZE):
+            words = game.board.grid[i]
+            for word in words:
+                assert word.upper() in rows[i]
+
 
 class MockBot(MockSopel):
 
@@ -184,8 +197,9 @@ class MockBot(MockSopel):
         self.config.parser.set('core', 'prefix', '!')
         self.prefix: str = self.config.core.prefix
 
-    def send_message(self, msg: str, func: Callable, privmsg: bool = False,
-                     single_output: bool = True) -> List[str]:
+    def send_message(self, msg: str, func: Callable, author: str = None,
+                     privmsg: bool = False, single_output: bool = True) \
+            -> Union[List[str], str]:
         """Send message to the bot with the intent of triggering the provided
         callable."""
         match = None
@@ -198,7 +212,8 @@ class MockBot(MockSopel):
         assert match, 'Function did not match any command.'
 
         sender = self.nick if privmsg else "#channel"
-        hostmask = "%s!%s@%s " % (self.nick, "UserName", "example.com")
+        author = author or self.nick
+        hostmask = "%s!%s@%s" % (author, "UserName", "example.com")
         full_message = ':{} PRIVMSG {} :{}'.format(hostmask, sender, msg)
 
         pretrigger = sopel.trigger.PreTrigger(self.nick, full_message)
@@ -207,6 +222,7 @@ class MockBot(MockSopel):
         func(wrapper, trigger)
         if single_output:
             assert len(wrapper.output) == 1, 'Command returned multiple lines.'
+            return wrapper.output[0]
         return wrapper.output
 
 
@@ -219,6 +235,16 @@ class MockWriteWrapper(MockSopelWrapper):
 
 class TestBot:
 
+    @staticmethod
+    def undecorate(bot_response: str) -> str:
+        matcher = re.compile('[{}{}{}]|{}\d\d'.format(CONTROL_UNDERLINE,
+                                                      CONTROL_NORMAL,
+                                                      CONTROL_BOLD,
+                                                      CONTROL_COLOR))
+        response = matcher.sub('', bot_response)
+        response = response.replace(CONTROL_COLOR, '')
+        return response
+
     @pytest.fixture
     def bot(self) -> MockBot:
         bot = MockBot(nick='Testuvorov')
@@ -227,6 +253,27 @@ class TestBot:
 
     def test_rules(self, bot: MockBot):
         output = bot.send_message('!rules', rules)
-        assert output[0] == 'RULES: https://static1.squarespace.com/static/' \
-                            '54da1198e4b0e9d26e55b0fc/t/5646752be4b0c85596a66'\
-                            'ac7/1447458091793/codenames-rules-en.pdf'
+        assert output == 'RULES: https://static1.squarespace.com/static/' \
+                         '54da1198e4b0e9d26e55b0fc/t/5646752be4b0c85596a66'\
+                         'ac7/1447458091793/codenames-rules-en.pdf'
+
+    def test_setup_game(self, bot: MockBot):
+        output = bot.send_message('!setup', setup_game)
+        assert output == 'Setting up Codenames, please !join (optional ' \
+                         'red|blue) to join a team and !spymaster to become ' \
+                         'your team\'s spymaster. Say !start to start the ' \
+                         'game once teams are decided.'
+        game = get_game(bot)
+        assert game.phase == GamePhase.setup
+
+    def test_add_player(self, bot: MockBot):
+        bot.send_message('!setup', setup_game)
+
+        output = bot.send_message('!join red', add_player, 'tester1')
+        assert self.undecorate(output) == 'Added tester1 to Red team.'
+
+        output = bot.send_message('!join blue', add_player, 'tester1')
+        assert self.undecorate(output) == 'Added tester1 to Blue team.'
+
+        output = bot.send_message('!join GRU', add_player, 'tester1')
+        assert self.undecorate(output) == 'You call GRU a team??'
