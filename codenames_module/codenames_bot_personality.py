@@ -1,7 +1,7 @@
 import random
 
 from sopel.module import (
-    commands, rule, require_chanmsg, example)
+    commands, rule, require_chanmsg)
 
 from .codenames_bot import (
     say, get_arguments
@@ -35,7 +35,7 @@ def suicide(bot, trigger):
                 bye = "Nooooooooo......!"
         say(bot, trigger, bye)
     bot.write(('QUIT', 'Goodbye cruel world...'))
-    
+
     import os
     import signal
     pid = os.getpid()
@@ -66,7 +66,7 @@ def good_bot(bot, trigger):
     else:
         response = random.choice(["Not...good...enough!",
                                   "Best bot!", "\♥/"])
-    
+
     say(bot, trigger, response)
 
 
@@ -75,7 +75,7 @@ def set_personality(bot, trigger):
     """Sets the bot's personality. Possible values are 0 (cold),
      1 (warm, default), 2 (friendly) and 5 (not recommended).
      Can also use codenames for personalities (e.g. 'ape')"""
-    
+
     args = get_arguments(trigger)
     if len(args) == 0:
         bot.personality = 2
@@ -105,5 +105,5 @@ def set_personality(bot, trigger):
             say(bot, trigger, 'I am sorry, this is not one of my'
                               ' predefined personalities.')
             return
-    
+
     say(bot, trigger, '<Bzzt!>')

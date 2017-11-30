@@ -77,7 +77,7 @@ class GameBoard(object):
     checking win conditions.
     """
 
-    def __init__(self, word_deck: List[str], spy_key: List[List[CardType]]):
+    def __init__(self, word_deck: WordDeck, spy_key: SpyKey):
         self.validate_deck(word_deck)
         self.word_deck: WordDeck = word_deck
         self.spy_key: SpyKey = spy_key

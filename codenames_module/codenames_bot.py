@@ -140,18 +140,18 @@ def print_counts(bot, trigger):
         say(bot, trigger, irc_format.underline("CURRENT SCORE"))
         say(bot, trigger, "Team {team}: {flp} cards revealed, "
                           "{rem} cards remaining.".format(
-            team=Team.red.name,
-            flp=counts.revealed_red,
-            rem=counts.hidden_red))
+                            team=Team.red.name,
+                            flp=counts.revealed_red,
+                            rem=counts.hidden_red))
         say(bot, trigger, "Team {team}: {flp} cards revealed, "
                           "{rem} cards remaining.".format(
-            team=Team.blue.name,
-            flp=counts.revealed_blue,
-            rem=counts.hidden_blue))
+                            team=Team.blue.name,
+                            flp=counts.revealed_blue,
+                            rem=counts.hidden_blue))
         say(bot, trigger, "Bystanders remaining: {bys}."
                           " Assassins: {ass}".format(
-            bys=counts.hidden_white,
-            ass=counts.black))
+                            bys=counts.hidden_white,
+                            ass=counts.black))
 
 
 @commands('print', 'print_board', 'board')
@@ -404,7 +404,7 @@ def player_choose(bot, trigger):
     if (not game.DEBUG) and str(trigger.nick) == game.spymasters[player_team]:
         bot.say('Spymasters aren\'t allowed to touch cards.', trigger.nick)
 
-    player_team_name = get_decorated_team_name(player_team)
+    # player_team_name = get_decorated_team_name(player_team)
     other_team_name = get_decorated_team_name(player_team.other())
     word = trigger.groups(17)[2].strip().upper()  # first argument, default 17
     if word == '17':
@@ -475,14 +475,14 @@ def player_choose(bot, trigger):
         if game.board.assassin_revealed():
             response = '{losing_team_name} revealed the assassin! ' \
                        '{winning_team_name} wins the game!'.format(
-                losing_team_name=losing_team_name,
-                winning_team_name=winning_team_name
-            )
+                            losing_team_name=losing_team_name,
+                            winning_team_name=winning_team_name
+                        )
         else:
             response = '{winning_team_name} has revealed all of their ' \
                        'agents, and are victorious! Congrats!'.format(
-                winning_team_name=winning_team_name
-            )
+                            winning_team_name=winning_team_name
+                        )
         say(bot, trigger, response)
 
         rows = game.complete_original_spoiler_rows
